@@ -38,7 +38,7 @@
    Reset                  GPIO 32      System reset
    
    Volume Control         ESP32        Description
-   50k Potentiometer      GPIO 34      Analog volume control (0-25, limited to avoid distortion)
+   Software Control       N/A          Volume control via serial/web commands (0-30, default 25)
    -----------------------------------------------------------------------------------------
 */
 
@@ -61,11 +61,8 @@
 #define PLAY_PAUSE_BUTTON 26        // Play/pause button (safe pin)
 #define SHUFFLE_BUTTON  27          // Shuffle button (safe pin)
 
-// ESP32 Pin definitions for analog controls
-#define VOLUME_POT_PIN  34          // Volume potentiometer (analog input, ADC1_CH6)
-
 // Volume control constants
-#define MAX_VOLUME      25          // Maximum volume (limited to avoid distortion)
+#define MAX_VOLUME      30          // Maximum volume
 #define MIN_VOLUME      0           // Minimum volume
 
 // WiFi credentials for web interface
@@ -97,10 +94,6 @@ boolean TimePeriodIsOver(unsigned long &startOfPeriod, unsigned long TimePeriod)
 
 // WiFi functions
 void setupWiFi();
-
-// Volume control functions
-void handleVolumeControl();
-int readPotentiometerVolume();
 
 // WiFi web interface functions
 void setupWebServer();
@@ -136,10 +129,7 @@ unsigned long checkTimer = 0;          // Timer for system health check
 unsigned long checkInterval = 5000;    // Check every 5 seconds
 
 // Volume management
-int currentVolume = 15;                 // Track current volume (0-25, limited to avoid distortion)
-int lastPotVolume = -1;                 // Track last potentiometer volume to detect changes
-unsigned long volumeCheckTimer = 0;    // Timer for volume potentiometer reading
-unsigned long volumeCheckInterval = 100; // Check volume every 100ms
+int currentVolume = 25;                 // Track current volume (0-30, default 25)
 
 // Button state variables
 bool previousNextButtonState = HIGH;
@@ -206,7 +196,7 @@ void setup() {
   Serial.println(F("- Previous: GPIO 33"));
   Serial.println(F("- Shuffle: GPIO 27"));
   Serial.println(F("- Reset: GPIO 32"));
-  Serial.println(F("🎚️ Volume Control: 50k Potentiometer on GPIO 34 (0-25, limited to avoid distortion)"));
+  Serial.println(F("🎚️ Volume Control: Software control via serial/web commands (0-30, default 25)"));
   Serial.println(F("\n📝 PROGRAMMING MODE: Type 'program' to enter card programming mode"));
   Serial.println(F("💿 Commands: l=song list, v=volume, +=vol up, -=vol down, s=status"));
   Serial.print(F("🕸️  Web Interface: Available at http://"));
@@ -220,7 +210,6 @@ void loop() {
     handleButtons();
     handleRFID();
     handleSerialCommands();
-    handleVolumeControl();    // Check potentiometer volume
     performSystemCheck();
   } else {
     // Programming mode - RFID card programming
@@ -840,43 +829,6 @@ boolean TimePeriodIsOver(unsigned long &startOfPeriod, unsigned long TimePeriod)
     return true;
   }
   return false;
-}
-
-//*****************************************************************************
-// Volume Control Functions
-//*****************************************************************************
-
-void handleVolumeControl() {
-  // Check potentiometer volume periodically
-  if (TimePeriodIsOver(volumeCheckTimer, volumeCheckInterval)) {
-    int potVolume = readPotentiometerVolume();
-    
-    // Only update if volume has changed significantly (prevents jitter)
-    if (abs(potVolume - lastPotVolume) > 0) {
-      lastPotVolume = potVolume;
-      
-      if (potVolume != currentVolume) {
-        currentVolume = potVolume;
-        myDFPlayer.volume(currentVolume);
-        
-        Serial.print("🎚️ Volume adjusted to: ");
-        Serial.println(currentVolume);
-      }
-    }
-  }
-}
-
-int readPotentiometerVolume() {
-  // Read analog value from potentiometer (0-4095 on ESP32)
-  int analogValue = analogRead(VOLUME_POT_PIN);
-  
-  // Map to volume range (0-25, limited to avoid distortion)
-  int volume = map(analogValue, 0, 4095, MIN_VOLUME, MAX_VOLUME);
-  
-  // Ensure volume is within bounds
-  volume = constrain(volume, MIN_VOLUME, MAX_VOLUME);
-  
-  return volume;
 }
 
 //*****************************************************************************
