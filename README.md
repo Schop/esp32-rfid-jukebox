@@ -1,287 +1,256 @@
 # ESP32 RFID Jukebox
 
-An ESP32-based RFID jukebox that plays MP3 files when RFID cards are scanned. Converted from Arduino IDE to PlatformIO for enhanced development experience and ESP32 optimization.
+A powerful, feature-rich RFID-controlled music player built with ESP32, featuring physical controls, WiFi web interface, and analog volume control.
 
-## Features
+## 🎵 Features
 
-### 🎵 Music Playbook
-- **RFID-triggered playbook**: Scan a card to instantly play the corresponding song
-- **Physical button controls**: Play/pause, next, previous, shuffle, and reset
-- **Playlist support**: Special cards (negative numbers) trigger folder-based playlists
-- **Volume control**: Serial commands for volume adjustment (0-30 range)
-- **Integrated RFID programming**: Built-in card programming functionality
+- **RFID Control**: Place cards on reader to instantly play specific songs or playlists
+- **Physical Controls**: Buttons for play/pause, next/previous, shuffle, and system reset
+- **Analog Volume Control**: Smooth potentiometer-based volume adjustment (0-25, distortion-limited)
+- **WiFi Web Interface**: Control via web browser from any device on your network
+- **Programming Mode**: Write new cards with automatic, manual, or read-only modes
+- **Playlist Support**: Special playlist cards for folder-based music organization
+- **Auto Recovery**: System health monitoring with automatic error recovery
+- **Hardware Serial**: Reliable ESP32 Serial2 communication with DFPlayer Mini
 
-### 🔧 Technical Features
-- **Hardware Serial**: Uses ESP32's Serial2 for reliable DFPlayer communication
-- **Error recovery**: Automatic system health monitoring and recovery
-- **Non-blocking operation**: Responsive button handling and RFID detection
-- **Debug interface**: Serial commands for testing and diagnostics
-- **Dual-mode operation**: Switch between jukebox and programming modes
-- **🕸️ WiFi Web Interface**: Control via web browser on any device
+## 🔧 Hardware Requirements
 
-### 🎛️ Control Options
-- **RFID Cards**: Primary music selection method
-- **Physical Buttons**: Manual playback control
-- **Serial Commands**: Debug and volume control interface
-- **📡 Wireless Updates**: Upload new firmware over WiFi
-- **🌐 Web Interface**: Control via browser (http://esp32-jukebox.local)
-- **📱 Mobile Control**: Works on phones, tablets, and computers
+### Core Components
+- **ESP32 Dev Module** (38-pin version recommended)
+- **RC522 RFID Reader** with cards/tags
+- **DFPlayer Mini MP3 Module** with microSD card
+- **50kΩ Potentiometer** for volume control
+- **Speaker** (8Ω, 3W recommended)
+- **Breadboard/PCB** for prototyping
+- **Jumper wires** and connectors
 
-## Hardware Requirements
+### Optional Components
+- **Push buttons** (5x) for manual control
+- **Pull-up resistors** (10kΩ) if not using internal pull-ups
+- **Power supply** (5V, 2A minimum)
 
-### Components
-- ESP32 development board
-- RC522 RFID reader module
-- DFPlayer Mini MP3 module
-- MicroSD card (for MP3 files)
-- 5 push buttons
-- Speaker (3W 4Ω recommended)
-- Jumper wires and breadboard/PCB
+## 📋 Hardware Connections
 
-### Wiring Diagram
+### RFID Reader (RC522)
+```
+RC522 Pin    ESP32 Pin    Description
+SDA          GPIO 5       SPI Chip Select
+SCK          GPIO 18      SPI Clock
+MOSI         GPIO 23      SPI Data Out
+MISO         GPIO 19      SPI Data In
+IRQ          (unused)     Interrupt (not connected)
+GND          GND          Ground
+RST          GPIO 21      Reset
+3.3V         3.3V         Power (2.5-3.3V)
+```
 
-#### RC522 RFID Reader → ESP32
-| RC522 Pin | ESP32 Pin | Description |
-|-----------|-----------|-------------|
-| SDA       | GPIO 5    | SPI Slave Select |
-| SCK       | GPIO 18   | SPI Clock |
-| MOSI      | GPIO 23   | SPI Master Out |
-| MISO      | GPIO 19   | SPI Master In |
-| RST       | GPIO 21   | Reset |
-| 3.3V      | 3.3V      | Power |
-| GND       | GND       | Ground |
+### DFPlayer Mini
+```
+DFPlayer Pin ESP32 Pin    Description
+TX           GPIO 16      Serial receive (ESP32 RX2)
+RX           GPIO 17      Serial transmit (ESP32 TX2)
+VCC          5V           Power supply
+GND          GND          Ground
+SPK1         Speaker +    Audio output positive
+SPK2         Speaker -    Audio output negative
+```
 
-#### DFPlayer Mini → ESP32
-| DFPlayer Pin | ESP32 Pin | Description |
-|--------------|-----------|-------------|
-| TX           | GPIO 16   | Serial Receive (ESP32 RX2) |
-| RX           | GPIO 17   | Serial Transmit (ESP32 TX2) |
-| VCC          | 5V        | Power |
-| GND          | GND       | Ground |
-| SPK1/SPK2    | Speaker   | Audio Output |
+### Control Buttons
+```
+Button       ESP32 Pin    Description
+Play/Pause   GPIO 26      Play/pause toggle
+Next Track   GPIO 25      Next track
+Previous     GPIO 33      Previous track
+Shuffle      GPIO 27      Shuffle/random play
+Reset        GPIO 32      System reset
+```
 
-#### Control Buttons → ESP32
-| Button Function | ESP32 Pin | Description |
-|----------------|-----------|-------------|
-| Play/Pause     | GPIO 26   | Toggle playback |
-| Next Track     | GPIO 25   | Next song |
-| Previous Track | GPIO 33   | Previous song |
-| Shuffle        | GPIO 27   | Random play |
-| Reset          | GPIO 32   | System reset |
+### Volume Control
+```
+Potentiometer ESP32 Pin   Description
+Terminal 1    GND         Ground
+Wiper         GPIO 34     Analog input (ADC1_CH6)
+Terminal 3    3.3V        Power (⚠️ NOT 5V!)
+```
 
-*All buttons use internal pull-up resistors (INPUT_PULLUP)*
-*These are "safe" GPIO pins that won't interfere with ESP32 boot process*
+## 🚀 Quick Start
 
-## Software Setup
+### 1. Hardware Setup
+1. Connect all components according to the wiring diagram above
+2. **Important**: Connect potentiometer to 3.3V, NOT 5V (would damage ESP32)
+3. Insert formatted microSD card into DFPlayer Mini
+4. Add MP3 files to SD card (001.mp3, 002.mp3, etc.)
 
-### Prerequisites
-- VS Code with PlatformIO extension
-- ESP32 board package
-- USB cable for programming
-
-### Installation
-
-#### Initial Setup (USB Required)
-1. **Clone or download** this project
-2. **Open in VS Code** with PlatformIO
-3. **Configure WiFi**: Edit `main.cpp` and update WiFi credentials:
+### 2. Software Setup
+1. Install [PlatformIO](https://platformio.org/) in VS Code
+2. Clone this repository
+3. Open project in VS Code with PlatformIO
+4. Update WiFi credentials in `src/main.cpp`:
    ```cpp
-   const char* ssid = "YOUR_WIFI_SSID";
-   const char* password = "YOUR_WIFI_PASSWORD";
+   const char* ssid = "Your_WiFi_Name";
+   const char* password = "Your_WiFi_Password";
    ```
-4. **Build the project**: Click the build button (✓) or use `Ctrl+Alt+B`
-5. **Upload to ESP32**: Click upload button (→) or use `Ctrl+Alt+U`
+5. Connect ESP32 via USB and upload code
+6. Open Serial Monitor (115200 baud) to see status
 
-### SD Card Setup
-1. **Format** a microSD card as FAT32
-2. **Create folders** (optional, for playlist cards):
-   - `01/` - Folder 1 (triggered by card with number -1)
-   - `02/` - Folder 2 (triggered by card with number -2)
-   - `03/` - Folder 3 (triggered by card with number -3)
+### 3. SD Card Setup
+1. Format microSD card as FAT32
+2. Add MP3 files named: `001.mp3`, `002.mp3`, etc.
+3. Optional: Create folders for playlists:
+   - `01/` - Folder 1 (triggered by card -1)
+   - `02/` - Folder 2 (triggered by card -2)
    - etc.
-3. **Copy MP3 files**:
-   - Root directory: `001.mp3`, `002.mp3`, `003.mp3`, etc.
-   - In folders: `001.mp3`, `002.mp3`, etc.
-4. **Insert SD card** into DFPlayer Mini
 
-### RFID Card Programming
-**No separate programmer needed!** The jukebox includes integrated RFID programming:
+### 4. Programming RFID Cards
+1. Upload code and open Serial Monitor
+2. Type `p` to enter programming mode
+3. Choose mode:
+   - `auto` - Auto-increment card programming
+   - `manual` - Manually specify track numbers
+   - `read` - Read existing card values
+4. Follow on-screen instructions
 
-#### Programming Mode:
-1. **Enter programming mode**: Type `p` in Serial Monitor
-2. **Choose programming type**:
-   - `auto` - Sequential numbering starting from your chosen number
-   - `manual` - Enter specific numbers for each card
-   - `read` - Read and display existing card numbers
-3. **Program your cards**: Place cards on reader as prompted
-4. **Return to jukebox**: Type `jukebox` when done
+## 🕸️ Web Interface
 
-#### Quick Setup for New Cards:
+Once connected to WiFi, access the web interface at: `http://[ESP32-IP-ADDRESS]/`
+
+### Available Controls
+- **Volume**: Check current volume, increase/decrease
+- **Playback**: Check player status, list all songs
+- **Programming**: Enter/exit programming mode
+- **System**: Reset ESP32
+
+### API Access
+Programmatic control via HTTP GET requests:
 ```
-1. Type: p                 (enter programming mode)
-2. Type: auto              (automatic sequential programming)  
-3. Type: 1                 (start numbering from 1)
-4. Place card 1 on reader  (writes number 1)
-5. Place card 2 on reader  (writes number 2)
-6. Continue for all cards...
-7. Type: jukebox          (return to music mode)
+http://[ESP32-IP]/api/command?cmd=v  # Check volume
+http://[ESP32-IP]/api/command?cmd=+  # Volume up
+http://[ESP32-IP]/api/command?cmd=-  # Volume down
+http://[ESP32-IP]/api/command?cmd=s  # Player status
+http://[ESP32-IP]/api/command?cmd=l  # List songs
 ```
 
-## Usage
+## 🎚️ Volume Control
 
-### Basic Operation
-1. **Power on** the ESP32
-2. **Wait for initialization** (DFPlayer setup takes 3-5 seconds)
-3. **Scan an RFID card** to play the corresponding song
-4. **Use buttons** for manual control during playback
+The system includes multiple volume control methods:
+
+### Potentiometer (Primary)
+- **Real-time control**: Smooth analog adjustment
+- **Range**: 0-25 (limited to prevent distortion)
+- **Update rate**: 100ms for responsive control
+- **Safety**: Hardware limits prevent damage
 
 ### Button Controls
-- **Play/Pause**: Toggle between play and pause
-- **Next**: Skip to next track
-- **Previous**: Go to previous track  
-- **Shuffle**: Start random playback from all songs
-- **Reset**: Restart the ESP32 system
+- **Serial commands**: `+` (up), `-` (down), `v` (check)
+- **Web interface**: Volume up/down buttons
+- **Limits**: Same 0-25 range as potentiometer
 
-### Serial Commands (Debug)
-Connect to Serial Monitor (115200 baud) and send:
+### Why Volume Limit?
+Volume is capped at 25 (instead of 30) because higher levels cause audio distortion on most speakers. This provides optimal sound quality while preventing damage.
 
-**Jukebox Mode:**
-- `s` - Check DFPlayer status
-- `r` - Manual system reset
-- `v` - Display current volume
-- `+` - Increase volume
-- `-` - Decrease volume
-- `l` - List all available songs with track numbers
-- `p` - Enter RFID programming mode
+## 🔧 Serial Commands
 
-**Programming Mode:**
-- `auto` - Start automatic sequential programming
-- `manual` - Manual number entry for each card
-- `read` - Read and display card contents
-- `jukebox` - Return to jukebox mode
-
-### 🌐 WiFi Web Interface
-Access the web interface on any device connected to your network:
-
-**Web Access:**
-- **URL**: `http://esp32-jukebox.local` (or use IP address from Serial Monitor)
-- **Mobile-friendly**: Works on phones, tablets, computers
-- **Real-time control**: All serial commands available via web buttons
-- **API access**: HTTP endpoints for programmatic control
-
-**Available via Web:**
-- 🎛️ **Volume Control**: Check volume, volume up/down
-- 🎵 **Music Control**: Player status, song list
-- 🔧 **Programming Mode**: Enter/exit programming mode
-- 🔧 **System Control**: Reset ESP32
-- 💬 **Custom Commands**: Send any single character command
-
-**📋 For detailed web interface guide, see [WIFI_WEB_INTERFACE.md](WIFI_WEB_INTERFACE.md)**
-
-### Card Number System
-- **1-999**: Play specific track number from root directory
-- **-1 to -6**: Play from corresponding folder (01/ to 06/)
-- **-7**: Master card - return to main MP3 folder
-
-## Project Structure
+Connect to Serial Monitor (115200 baud) for debug commands:
 
 ```
-jukebox/
+s  - Check DFPlayer status
+v  - Check current volume
++  - Increase volume
+-  - Decrease volume
+l  - List all songs
+p  - Enter programming mode
+r  - Reset ESP32
+```
+
+## 📁 Project Structure
+
+```
+esp32-rfid-jukebox/
 ├── src/
-│   └── main.cpp           # Main application code
-├── lib/                   # Project libraries (empty)
-├── include/               # Header files (empty)
-├── .github/
-│   └── copilot-instructions.md  # Copilot customization
-├── platformio.ini         # PlatformIO configuration
-└── README.md              # This file
+│   └── main.cpp              # Main application code
+├── include/                  # Header files (if any)
+├── lib/                      # Private libraries
+├── test/                     # Unit tests
+├── docs/                     # Documentation
+│   ├── HARDWARE_GUIDE.md     # Detailed hardware setup
+│   ├── SOFTWARE_GUIDE.md     # Software configuration
+│   └── TROUBLESHOOTING.md    # Common issues and solutions
+├── .vscode/                  # VS Code settings
+├── .gitignore               # Git ignore rules
+├── platformio.ini           # PlatformIO configuration
+└── README.md               # This file
 ```
 
-## Configuration
+## 🛠️ Development
 
-### PlatformIO Settings
-The `platformio.ini` file is configured for:
-- **Platform**: Espressif32
-- **Board**: ESP32 Dev Module
-- **Framework**: Arduino
-- **Monitor Speed**: 115200 baud
-- **Upload Speed**: 921600 baud
+### Building
+```bash
+# Build project
+pio run
 
-### Libraries
-- `miguelbalboa/MFRC522@^1.4.10` - RFID operations
-- `dfrobot/DFRobotDFPlayerMini@^1.0.6` - MP3 player control
+# Upload to ESP32
+pio run --target upload
 
-### Build Flags
-- `CORE_DEBUG_LEVEL=3` - Enhanced debugging output
+# Serial monitor
+pio device monitor
+```
 
-## Troubleshooting
+### Adding Songs
+1. Name files as `001.mp3`, `002.mp3`, etc.
+2. Update `getSongInfo()` function in `main.cpp` with track information
+3. Program RFID cards with corresponding numbers
+
+### Customization
+- **Pin assignments**: Modify `#define` statements in `main.cpp`
+- **Volume limits**: Change `MAX_VOLUME` constant
+- **WiFi settings**: Update credentials in `main.cpp`
+- **Song database**: Modify `getSongInfo()` function
+
+## 🔧 Troubleshooting
 
 ### Common Issues
 
-**DFPlayer not responding:**
-- Check wiring connections (especially TX/RX)
-- Ensure SD card is properly formatted (FAT32)
-- Verify MP3 files are numbered correctly (001.mp3, 002.mp3, etc.)
-- Check power supply (DFPlayer needs 5V)
+**DFPlayer not responding**
+- Check wiring (especially TX/RX swap)
+- Verify SD card format (FAT32)
+- Ensure MP3 files are properly named
 
-**RFID cards not detected:**
-- Verify RC522 connections
-- Check antenna gain setting in code
-- Ensure cards are properly programmed
-- Test with known working cards
+**Volume distortion**
+- Reduce maximum volume limit
+- Check speaker impedance (8Ω recommended)
+- Verify power supply capacity
 
-**System resets frequently:**
-- Check power supply stability
-- Monitor Serial output for error messages
-- Verify all connections are secure
-- Check for interference from other devices
+**WiFi connection failed**
+- Double-check credentials
+- Ensure 2.4GHz network (ESP32 doesn't support 5GHz)
+- Check signal strength
 
-**No audio output:**
-- Verify speaker connections
-- Check volume settings (use `v`, `+`, `-` commands)
-- Test with headphones first
-- Ensure MP3 files are valid
+**RFID cards not reading**
+- Verify SPI connections
+- Check antenna positioning
+- Ensure cards are MIFARE Classic compatible
 
-### Debug Mode
-Enable additional debug output by:
-1. Setting `CORE_DEBUG_LEVEL=3` in platformio.ini (already set)
-2. Monitoring Serial output at 115200 baud
-3. Using serial commands to check system status
+## 📜 License
 
-## Advanced Features
+This project is open source and available under the MIT License.
 
-### Custom Playlists
-Create themed playlists by organizing MP3 files in folders:
-- `01/` - Kids songs
-- `02/` - Classical music  
-- `03/` - Rock/Pop
-- `04/` - Ambient/Relaxation
-- etc.
+## 🙏 Acknowledgments
 
-Program RFID cards with negative numbers to trigger these playlists.
+- Based on original Arduino RFID jukebox by ryand1011 and Ananords
+- Uses libraries: MFRC522, DFRobotDFPlayerMini, ESPAsyncWebServer
+- Converted to ESP32 with enhanced features
 
-### Volume Presets
-Modify the code to set different volume levels for different card types or times of day.
+## 🤝 Contributing
 
-### WiFi Integration
-The ESP32's WiFi capabilities can be added for:
-- Web-based control interface
-- Streaming from online sources
-- Remote playlist management
+Pull requests are welcome! For major changes, please open an issue first to discuss what you would like to change.
 
-## Contributing
+## 📧 Support
 
-This project was converted from Arduino IDE to ESP32/PlatformIO. Contributions welcome for:
-- Additional button functions
-- WiFi/Bluetooth features
-- Web interface
-- Enhanced error handling
-- Performance optimizations
+For questions or issues:
+1. Check the [Troubleshooting Guide](docs/TROUBLESHOOTING.md)
+2. Search existing GitHub issues
+3. Create a new issue with detailed description
 
-## License
+---
 
-Based on original work by ryand1011 and Ananords. Converted and enhanced for ESP32 platform.
-
-## Related Projects
-
-- [RFID Programmer](../rfid-programmer/) - Companion project for programming RFID cards
+**⚠️ Safety Note**: Always connect the potentiometer to 3.3V, never 5V, to avoid damaging the ESP32's analog input pins.
