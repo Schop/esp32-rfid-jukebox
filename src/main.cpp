@@ -94,6 +94,8 @@ boolean TimePeriodIsOver(unsigned long &startOfPeriod, unsigned long TimePeriod)
 
 // WiFi functions
 void setupWiFi();
+void handleWiFiConnection();
+bool wifiSetupComplete = false;
 
 // WiFi web interface functions
 void setupWebServer();
@@ -130,6 +132,12 @@ unsigned long checkInterval = 5000;    // Check every 5 seconds
 
 // Volume management
 int currentVolume = 25;                 // Track current volume (0-30, default 25)
+
+// WiFi management
+bool wifiConnected = false;            // Track WiFi connection status
+unsigned long wifiStartTime = 0;      // WiFi connection start time
+unsigned long wifiTimeout = 10000;    // WiFi connection timeout (10 seconds)
+bool wifiSetupStarted = false;         // Track if WiFi setup has started
 
 // Button state variables
 bool previousNextButtonState = HIGH;
@@ -183,10 +191,9 @@ void setup() {
     Serial.println(currentVolume);
   }
   
-  // Initialize WiFi and web server
-  Serial.println(F("Step 6: Setting up WiFi and web server..."));
+  // Start WiFi connection in non-blocking mode
+  Serial.println(F("Step 6: Starting WiFi connection (non-blocking)..."));
   setupWiFi();
-  setupWebServer();
   
   Serial.println(F("=== ESP32 RFID Jukebox Ready ==="));
   Serial.println(F("🎵 JUKEBOX MODE: Place an RFID card on the reader to play a song"));
@@ -199,12 +206,16 @@ void setup() {
   Serial.println(F("🎚️ Volume Control: Software control via serial/web commands (0-30, default 25)"));
   Serial.println(F("\n📝 PROGRAMMING MODE: Type 'program' to enter card programming mode"));
   Serial.println(F("💿 Commands: l=song list, v=volume, +=vol up, -=vol down, s=status"));
-  Serial.print(F("🕸️  Web Interface: Available at http://"));
-  Serial.println(WiFi.localIP());
+  Serial.println(F("🕸️  Web Interface: Will be available once WiFi connects..."));
 }
 
 //*****************************************************************************
 void loop() {
+  // Handle WiFi connection in background
+  if (!wifiSetupComplete) {
+    handleWiFiConnection();
+  }
+  
   if (jukeboxMode) {
     // Jukebox mode - normal operation
     handleButtons();
@@ -836,27 +847,53 @@ boolean TimePeriodIsOver(unsigned long &startOfPeriod, unsigned long TimePeriod)
 //*****************************************************************************
 
 void setupWiFi() {
-  Serial.print(F("📡 Connecting to WiFi: "));
+  Serial.print(F("📡 Starting WiFi connection to: "));
   Serial.println(ssid);
   
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
   
-  int attempts = 0;
-  while (WiFi.status() != WL_CONNECTED && attempts < 20) {
-    delay(500);
-    Serial.print(".");
-    attempts++;
-  }
+  wifiStartTime = millis();
+  wifiSetupStarted = true;
+  Serial.println(F("📡 WiFi connecting in background..."));
+}
+
+void handleWiFiConnection() {
+  if (!wifiSetupStarted) return;
   
-  if (WiFi.status() == WL_CONNECTED) {
+  unsigned long currentTime = millis();
+  
+  // Check WiFi status
+  if (WiFi.status() == WL_CONNECTED && !wifiConnected) {
+    // WiFi just connected
+    wifiConnected = true;
+    wifiSetupComplete = true;
+    
     Serial.println();
     Serial.println(F("✅ WiFi connected!"));
     Serial.print(F("📍 IP address: "));
     Serial.println(WiFi.localIP());
-  } else {
+    
+    // Now setup the web server
+    setupWebServer();
+    Serial.print(F("🕸️  Web Interface: Available at http://"));
+    Serial.print(WiFi.localIP());
+    Serial.println(F("/"));
+    
+  } else if (currentTime - wifiStartTime > wifiTimeout && !wifiConnected) {
+    // WiFi connection timeout
+    wifiSetupComplete = true;
     Serial.println();
-    Serial.println(F("⚠️  WiFi connection failed - continuing without web interface"));
+    Serial.println(F("⚠️  WiFi connection timeout - continuing without web interface"));
+    Serial.println(F("🎵 Music playback is fully functional without WiFi"));
+    
+  } else if (!wifiConnected && (currentTime - wifiStartTime) % 1000 == 0) {
+    // Print a dot every second while connecting (non-blocking)
+    static unsigned long lastDotTime = 0;
+    if (currentTime - lastDotTime >= 1000) {
+      Serial.print(".");
+      lastDotTime = currentTime;
+    }
   }
 }
 
@@ -866,7 +903,7 @@ void setupWiFi() {
 
 void setupWebServer() {
   if (WiFi.status() != WL_CONNECTED) {
-    Serial.println(F("⚠️  Skipping Web Server setup - WiFi not connected"));
+    Serial.println(F("⚠️  Cannot setup Web Server - WiFi not connected"));
     return;
   }
   
