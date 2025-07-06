@@ -6,7 +6,7 @@
    Features:
    - RFID card-triggered MP3 playback
    - Physical button controls (play/pause, next, prev, shuffle, reset)
-   - Playlist support with negative numbers
+   - Playlist support with negative numbers (-1 to -6 for folders, -7 for shuffle)
    - Automatic error recovery and reset functionality
    - Hardware serial communication with DFPlayer Mini
    - WiFi web interface for remote control
@@ -377,18 +377,20 @@ void playCardNumber(int number) {
     int folderNumber = abs(number);
     
     if (number == -7) {
-      // Master card to play from main MP3 folder
-      myDFPlayer.playMp3Folder(1);
-      Serial.println("Playing from main MP3 folder");
+      // Shuffle card - start random play mode
+      myDFPlayer.randomAll();
+      Serial.println("🔀 Shuffle mode activated - Playing random tracks");
+      isPlaying = true;
     } else {
       // Play from specific folder
-      myDFPlayer.playLargeFolder(folderNumber, 1);    Serial.print("Playing from folder ");
-    Serial.println(folderNumber);
-  }
-  
-  Serial.print(F("Volume: "));
-  Serial.println(currentVolume);
-  isPlaying = true;
+      myDFPlayer.playLargeFolder(folderNumber, 1);
+      Serial.print("Playing from folder ");
+      Serial.println(folderNumber);
+      isPlaying = true;
+    }
+    
+    Serial.print(F("Volume: "));
+    Serial.println(currentVolume);
   }
   else if (number > 0) {
     // Regular song card - play specific track number
