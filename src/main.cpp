@@ -487,6 +487,23 @@ void handleSerialCommands() {
         Serial.println(F("===================\n"));
         break;
         
+      case 'x':
+        // Stop current song
+        myDFPlayer.stop();
+        isPlaying = false;
+        currentSong = 0;
+        Serial.println("STOP: Current song stopped");
+        break;
+        
+      case 'h':
+        // Shuffle mode
+        myDFPlayer.stop();
+        delay(100);
+        myDFPlayer.randomAll();
+        isPlaying = true;
+        Serial.println("SHUFFLE: Shuffle mode activated - Playing random tracks");
+        break;
+        
       case 'p':
         // Enter programming mode
         if (jukeboxMode) {
@@ -501,7 +518,7 @@ void handleSerialCommands() {
         
       default:
         if (jukeboxMode) {
-          Serial.println("Commands: s=state, r=reset, v=volume, +=vol up, -=vol down, l=list songs, p=program mode");
+          Serial.println("Commands: s=state, r=reset, v=volume, +=vol up, -=vol down, l=list songs, p=program mode, x=stop, h=shuffle");
         }
         break;
     }
@@ -942,15 +959,20 @@ void setupWebServer() {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     body { font-family: Arial, sans-serif; margin: 20px; background-color: #f0f0f0; }
-    .container { max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
     h1 { color: #333; text-align: center; }
     .section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
     .button { display: inline-block; margin: 5px; padding: 10px 20px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px; border: none; cursor: pointer; }
     .button:hover { background-color: #0056b3; }
     .control { background-color: #17a2b8; }
     .system { background-color: #dc3545; }
+    .play { background-color: #28a745; }
+    .shuffle { background-color: #ffc107; color: #212529; }
     .response { background-color: #f8f9fa; padding: 10px; border-radius: 5px; margin-top: 10px; min-height: 50px; border: 1px solid #dee2e6; }
     .command-input { width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #ddd; border-radius: 5px; }
+    .song-select { width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #ddd; border-radius: 5px; }
+    .song-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 5px; margin-top: 10px; }
+    .song-button { padding: 8px; font-size: 12px; }
   </style>
 </head>
 <body>
@@ -960,7 +982,85 @@ void setupWebServer() {
     <div class="section">
       <h3>Music Control</h3>
       <button onclick="sendCommand('s')" class="button control">Player Status</button>
-      <button onclick="sendCommand('l')" class="button control">List Songs</button>
+      <button onclick="sendCommand('x')" class="button control">Stop Current Song</button>
+      <button onclick="sendCommand('h')" class="button shuffle">Shuffle All Songs</button>
+    </div>
+    
+    <div class="section">
+      <h3>Song Selection</h3>
+      <select id="songSelect" class="song-select">
+        <option value="">Choose a song to play...</option>
+        <option value="1">01: Did Jesus Have a Baby Sister - Dory Previn</option>
+        <option value="2">02: That's All Right - Elvis Presley</option>
+        <option value="3">03: Hey Joe - Jimi Hendrix</option>
+        <option value="4">04: Delia's Gone - Johnny Cash</option>
+        <option value="5">05: In Da Club - 50 Cent</option>
+        <option value="6">06: Keep the Customer Satisfied - Simon & Garfunkel</option>
+        <option value="7">07: Thrift Shop - Macklemore & Ryan Lewis</option>
+        <option value="8">08: Old Man - Neil Young</option>
+        <option value="9">09: Never Going Back Again - Fleetwood Mac</option>
+        <option value="10">10: Norwegian Wood (This Bird Has Flown) - The Beatles</option>
+        <option value="11">11: Chain Gang - Sam Cooke</option>
+        <option value="12">12: Yakety Yak - The Coasters</option>
+        <option value="13">13: I've Been Everywhere - Johnny Cash</option>
+        <option value="14">14: Thunderstruck - AC/DC</option>
+        <option value="15">15: Duurt Te Lang - Davina Michelle</option>
+        <option value="16">16: Alles Gaat Voorbij - Doe Maar</option>
+        <option value="17">17: The Painter - William Ben</option>
+        <option value="18">18: Think - Aretha Franklin</option>
+        <option value="19">19: Scotland the Brave - Auld Town Band & Pipes</option>
+        <option value="20">20: Single Ladies - Beyoncé</option>
+        <option value="21">21: Grandma's Hands - Bill Withers</option>
+        <option value="22">22: Without Me - Eminem</option>
+        <option value="23">23: Spraakwater - Extince</option>
+        <option value="24">24: King of the World - First Aid Kit</option>
+        <option value="25">25: Komodovaraan - Yentl en De Boer</option>
+        <option value="26">26: Look What They've Done To My Song, Ma - Melanie</option>
+        <option value="27">27: The Man Who Sold The World - Nirvana</option>
+        <option value="28">28: Rotterdam - Pokey LaFarge</option>
+        <option value="29">29: 't Roeie Klied - Rowwen Heze</option>
+        <option value="30">30: You Never Can Tell - Chuck Berry</option>
+        <option value="31">31: Sit Still, Look Pretty - Daya</option>
+      </select>
+      <button onclick="playSong()" class="button play">Play Selected Song</button>
+      <div class="song-grid">
+        <button onclick="sendSongCommand('1')" class="button play song-button">1</button>
+        <button onclick="sendSongCommand('2')" class="button play song-button">2</button>
+        <button onclick="sendSongCommand('3')" class="button play song-button">3</button>
+        <button onclick="sendSongCommand('4')" class="button play song-button">4</button>
+        <button onclick="sendSongCommand('5')" class="button play song-button">5</button>
+        <button onclick="sendSongCommand('6')" class="button play song-button">6</button>
+        <button onclick="sendSongCommand('7')" class="button play song-button">7</button>
+        <button onclick="sendSongCommand('8')" class="button play song-button">8</button>
+        <button onclick="sendSongCommand('9')" class="button play song-button">9</button>
+        <button onclick="sendSongCommand('10')" class="button play song-button">10</button>
+        <button onclick="sendSongCommand('11')" class="button play song-button">11</button>
+        <button onclick="sendSongCommand('12')" class="button play song-button">12</button>
+        <button onclick="sendSongCommand('13')" class="button play song-button">13</button>
+        <button onclick="sendSongCommand('14')" class="button play song-button">14</button>
+        <button onclick="sendSongCommand('15')" class="button play song-button">15</button>
+        <button onclick="sendSongCommand('16')" class="button play song-button">16</button>
+        <button onclick="sendSongCommand('17')" class="button play song-button">17</button>
+        <button onclick="sendSongCommand('18')" class="button play song-button">18</button>
+        <button onclick="sendSongCommand('19')" class="button play song-button">19</button>
+        <button onclick="sendSongCommand('20')" class="button play song-button">20</button>
+        <button onclick="sendSongCommand('21')" class="button play song-button">21</button>
+        <button onclick="sendSongCommand('22')" class="button play song-button">22</button>
+        <button onclick="sendSongCommand('23')" class="button play song-button">23</button>
+        <button onclick="sendSongCommand('24')" class="button play song-button">24</button>
+        <button onclick="sendSongCommand('25')" class="button play song-button">25</button>
+        <button onclick="sendSongCommand('26')" class="button play song-button">26</button>
+        <button onclick="sendSongCommand('27')" class="button play song-button">27</button>
+        <button onclick="sendSongCommand('28')" class="button play song-button">28</button>
+        <button onclick="sendSongCommand('29')" class="button play song-button">29</button>
+        <button onclick="sendSongCommand('30')" class="button play song-button">30</button>
+        <button onclick="sendSongCommand('31')" class="button play song-button">31</button>
+      </div>
+    </div>
+    
+    <div class="section">
+      <h3>Information</h3>
+      <button onclick="sendCommand('l')" class="button control">List All Songs</button>
     </div>
     
     <div class="section">
@@ -976,7 +1076,7 @@ void setupWebServer() {
     
     <div class="section">
       <h3>Custom Command</h3>
-      <input type="text" id="customCmd" class="command-input" placeholder="Enter single character command (s, l, p, r)">
+      <input type="text" id="customCmd" class="command-input" placeholder="Enter command (s, l, p, r, x, h, or song number)">
       <button onclick="sendCustomCommand()" class="button">Send Command</button>
     </div>
     
@@ -1011,10 +1111,50 @@ void setupWebServer() {
         });
     }
     
+    function sendSongCommand(songNumber) {
+      const responseDiv = document.getElementById('response');
+      responseDiv.innerHTML = 'Playing song ' + songNumber + '...';
+      
+      fetch('/play?song=' + songNumber)
+        .then(response => response.text())
+        .then(data => {
+          setTimeout(() => {
+            fetch('/response')
+              .then(response => response.text())
+              .then(data => {
+                responseDiv.innerHTML = data.replace(/\n/g, '<br>');
+              })
+              .catch(error => {
+                responseDiv.innerHTML = 'Error fetching response: ' + error;
+              });
+          }, 500);
+        })
+        .catch(error => {
+          responseDiv.innerHTML = 'Error playing song: ' + error;
+        });
+    }
+    
+    function playSong() {
+      const songSelect = document.getElementById('songSelect');
+      const songNumber = songSelect.value;
+      if (songNumber) {
+        sendSongCommand(songNumber);
+        songSelect.value = ''; // Reset selection
+      } else {
+        alert('Please select a song first');
+      }
+    }
+    
     function sendCustomCommand() {
       const cmd = document.getElementById('customCmd').value;
       if (cmd.length >= 1) {
-        sendCommand(cmd);
+        // Check if it's a number (song selection)
+        if (!isNaN(cmd) && parseInt(cmd) >= 1 && parseInt(cmd) <= 31) {
+          sendSongCommand(cmd);
+        } else {
+          sendCommand(cmd);
+        }
+        document.getElementById('customCmd').value = ''; // Clear input
       } else {
         alert('Please enter a command');
       }
@@ -1044,6 +1184,31 @@ void setupWebServer() {
       }
     } else {
       request->send(400, "text/plain", "Missing command parameter");
+    }
+  });
+  
+  // Play song endpoint
+  server.on("/play", HTTP_GET, [](AsyncWebServerRequest *request){
+    if (request->hasParam("song")) {
+      String songParam = request->getParam("song")->value();
+      int songNumber = songParam.toInt();
+      if (songNumber >= 1 && songNumber <= 31) {
+        // Stop current song and play new one
+        myDFPlayer.stop();
+        delay(100);
+        myDFPlayer.play(songNumber);
+        currentSong = songNumber;
+        isPlaying = true;
+        
+        wifiResponse = "PLAY: Playing track #" + String(songNumber) + " - " + getSongInfo(songNumber);
+        request->send(200, "text/plain", "Song " + String(songNumber) + " started");
+      } else {
+        wifiResponse = "ERROR: Invalid song number. Must be 1-31.";
+        request->send(400, "text/plain", "Invalid song number");
+      }
+    } else {
+      wifiResponse = "ERROR: Missing song parameter";
+      request->send(400, "text/plain", "Missing song parameter");
     }
   });
   
@@ -1105,6 +1270,23 @@ String processCommand(char command) {
       wifiResponse += "===================";
       break;
       
+    case 'x':
+      // Stop current song
+      myDFPlayer.stop();
+      isPlaying = false;
+      currentSong = 0;
+      wifiResponse = "STOP: Current song stopped";
+      break;
+      
+    case 'h':
+      // Shuffle mode
+      myDFPlayer.stop();
+      delay(100);
+      myDFPlayer.randomAll();
+      isPlaying = true;
+      wifiResponse = "SHUFFLE: Shuffle mode activated - Playing random tracks";
+      break;
+      
     case 'p':
       if (jukeboxMode) {
         jukeboxMode = false;
@@ -1120,7 +1302,7 @@ String processCommand(char command) {
       
     default:
       wifiResponse = "Unknown command: " + String(command) + "\n";
-      wifiResponse += "Available commands: s=state, r=reset, l=list songs, p=program mode";
+      wifiResponse += "Available commands: s=state, r=reset, l=list songs, p=program mode, x=stop, h=shuffle";
       break;
   }
   
