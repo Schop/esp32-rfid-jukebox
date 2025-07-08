@@ -512,6 +512,33 @@ void handleSerialCommands() {
         Serial.println("SHUFFLE: Shuffle mode activated - Playing random tracks");
         break;
         
+      case 't':
+        // Toggle play/pause
+        if (isPlaying) {
+          myDFPlayer.pause();
+          isPlaying = false;
+          Serial.println("PAUSE: Playback paused");
+        } else {
+          myDFPlayer.start();
+          isPlaying = true;
+          Serial.println("PLAY: Playback resumed");
+        }
+        break;
+        
+      case 'n':
+        // Next track
+        myDFPlayer.next();
+        if (currentSong > 0) currentSong++;
+        Serial.println("NEXT: Next track");
+        break;
+        
+      case 'b':
+        // Previous track
+        myDFPlayer.previous();
+        if (currentSong > 1) currentSong--;
+        Serial.println("PREVIOUS: Previous track");
+        break;
+        
       case 'p':
         // Enter programming mode
         if (jukeboxMode) {
@@ -526,7 +553,7 @@ void handleSerialCommands() {
         
       default:
         if (jukeboxMode) {
-          Serial.println("Commands: s=state, r=reset, v=volume, +=vol up, -=vol down, l=list songs, p=program mode, x=stop, h=shuffle");
+          Serial.println("Commands: s=state, r=reset, v=volume, +=vol up, -=vol down, l=list songs, p=program mode, x=stop, h=shuffle, t=play/pause, n=next, b=previous");
         }
         break;
     }
@@ -1165,9 +1192,11 @@ void setupWebServer() {
             <h3 class="card-title">Playback Controls</h3>
             <div class="controls-grid">
                 <button onclick="sendCommand('s')" class="btn btn-modern btn-primary-modern">Status</button>
-                <button onclick="sendCommand('x')" class="btn btn-modern btn-danger-modern">Stop</button>
+                <button onclick="sendCommand('t')" class="btn btn-modern btn-success-modern">Play/Pause</button>
+                <button onclick="sendCommand('b')" class="btn btn-modern btn-secondary-modern">Previous</button>
+                <button onclick="sendCommand('n')" class="btn btn-modern btn-secondary-modern">Next</button>
                 <button onclick="sendCommand('h')" class="btn btn-modern btn-warning-modern">Shuffle</button>
-                <button onclick="sendCommand('l')" class="btn btn-modern btn-secondary-modern">List Songs</button>
+                <button onclick="sendCommand('x')" class="btn btn-modern btn-danger-modern">Stop</button>
             </div>
         </div>
 
@@ -1211,10 +1240,11 @@ void setupWebServer() {
             <button onclick="playSong()" class="btn btn-modern btn-success-modern w-100">Play Selected</button>
         </div>
 
-        <!-- Programming Mode -->
+        <!-- System Controls -->
         <div class="control-card">
-            <h3 class="card-title">Programming Mode</h3>
+            <h3 class="card-title">System Controls</h3>
             <div class="controls-grid">
+                <button onclick="sendCommand('l')" class="btn btn-modern btn-primary-modern">List Songs</button>
                 <button onclick="sendCommand('p')" class="btn btn-modern btn-outline-modern">Enter Programming</button>
                 <button onclick="sendCommand('jukebox')" class="btn btn-modern btn-outline-modern">Return to Jukebox</button>
             </div>
@@ -1400,6 +1430,33 @@ String processCommand(char command) {
       wifiResponse = "SHUFFLE: Shuffle mode activated - Playing random tracks";
       break;
       
+    case 't':
+      // Toggle play/pause
+      if (isPlaying) {
+        myDFPlayer.pause();
+        isPlaying = false;
+        wifiResponse = "PAUSE: Playback paused";
+      } else {
+        myDFPlayer.start();
+        isPlaying = true;
+        wifiResponse = "PLAY: Playback resumed";
+      }
+      break;
+      
+    case 'n':
+      // Next track
+      myDFPlayer.next();
+      if (currentSong > 0) currentSong++;
+      wifiResponse = "NEXT: Next track";
+      break;
+      
+    case 'b':
+      // Previous track
+      myDFPlayer.previous();
+      if (currentSong > 1) currentSong--;
+      wifiResponse = "PREVIOUS: Previous track";
+      break;
+      
     case 'p':
       if (jukeboxMode) {
         jukeboxMode = false;
@@ -1415,7 +1472,7 @@ String processCommand(char command) {
       
     default:
       wifiResponse = "Unknown command: " + String(command) + "\n";
-      wifiResponse += "Available commands: s=state, r=reset, l=list songs, p=program mode, x=stop, h=shuffle";
+      wifiResponse += "Available commands: s=state, r=reset, l=list songs, p=program mode, x=stop, h=shuffle, t=play/pause, n=next, b=previous";
       break;
   }
   

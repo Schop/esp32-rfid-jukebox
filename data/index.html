@@ -191,7 +191,7 @@
         
         .controls-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
             gap: 0.75rem;
         }
         
@@ -250,6 +250,7 @@
             .controls-grid {
                 grid-template-columns: repeat(2, 1fr);
             }
+        }
     </style>
 </head>
 <body>
@@ -270,14 +271,20 @@
                 <button onclick="sendCommand('s')" class="btn btn-modern btn-primary-modern">
                     <i class="bi bi-info-circle"></i> Status
                 </button>
-                <button onclick="sendCommand('x')" class="btn btn-modern btn-danger-modern">
-                    <i class="bi bi-stop-circle"></i> Stop
+                <button onclick="sendCommand('t')" class="btn btn-modern btn-success-modern">
+                    <i class="bi bi-play-pause"></i> Play/Pause
+                </button>
+                <button onclick="sendCommand('b')" class="btn btn-modern btn-secondary-modern">
+                    <i class="bi bi-skip-backward"></i> Previous
+                </button>
+                <button onclick="sendCommand('n')" class="btn btn-modern btn-secondary-modern">
+                    <i class="bi bi-skip-forward"></i> Next
                 </button>
                 <button onclick="sendCommand('h')" class="btn btn-modern btn-warning-modern">
                     <i class="bi bi-shuffle"></i> Shuffle
                 </button>
-                <button onclick="sendCommand('l')" class="btn btn-modern btn-secondary-modern">
-                    <i class="bi bi-list-ul"></i> List Songs
+                <button onclick="sendCommand('x')" class="btn btn-modern btn-danger-modern">
+                    <i class="bi bi-stop-circle"></i> Stop
                 </button>
             </div>
         </div>
@@ -333,13 +340,16 @@
             </div>
         </div>
 
-        <!-- Programming Mode -->
+        <!-- System Controls -->
         <div class="control-card">
             <h3 class="card-title">
                 <i class="bi bi-gear-fill"></i>
-                Programming Mode
+                System Controls
             </h3>
             <div class="controls-grid">
+                <button onclick="sendCommand('l')" class="btn btn-modern btn-primary-modern">
+                    <i class="bi bi-list-ul"></i> List Songs
+                </button>
                 <button onclick="sendCommand('p')" class="btn btn-modern btn-outline-modern">
                     <i class="bi bi-code-slash"></i> Enter Programming
                 </button>
