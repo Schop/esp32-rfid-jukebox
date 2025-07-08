@@ -7,7 +7,7 @@ A powerful, feature-rich RFID-controlled music player built with ESP32, featurin
 - **RFID Control**: Place cards on reader to instantly play specific songs or playlists
 - **Physical Controls**: Buttons for play/pause, next/previous, shuffle, and system reset
 - **Software Volume Control**: Digital volume adjustment via serial/web commands (0-30, default 25)
-- **Bootstrap Web Interface**: Modern, responsive web interface with dropdown song selection
+- **Bootstrap Web Interface**: Modern, responsive web interface with dropdown song selection and full playback controls
 - **Static IP Configuration**: Fixed IP address (192.168.1.251) for reliable web access
 - **Programming Mode**: Write new cards with automatic, manual, or read-only modes
 - **Playlist Support**: Special playlist cards for folder-based music organization
@@ -178,6 +178,11 @@ v  - Check current volume
 +  - Increase volume
 -  - Decrease volume
 l  - List all songs
+t  - Toggle play/pause
+n  - Next track
+b  - Previous track
+x  - Stop playback
+h  - Shuffle/random mode
 p  - Enter programming mode
 r  - Reset ESP32
 ```
