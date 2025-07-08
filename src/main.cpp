@@ -139,7 +139,7 @@ unsigned long checkTimer = 0;          // Timer for system health check
 unsigned long checkInterval = 5000;    // Check every 5 seconds
 
 // Volume management
-int currentVolume = 25;                 // Track current volume (0-30, default 25)
+int currentVolume = 30;                 // Track current volume (0-30, default 30)
 
 // WiFi management
 bool wifiConnected = false;            // Track WiFi connection status
