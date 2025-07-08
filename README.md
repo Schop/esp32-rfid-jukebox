@@ -90,7 +90,7 @@ Web Interface    Bootstrap    Modern responsive web interface with song selectio
    const char* ssid = "Your_WiFi_Name";
    const char* password = "Your_WiFi_Password";
    ```
-5. Connect ESP32 via USB and upload code
+5. Upload SPIFFS filesystem and code (see [SPIFFS Upload Guide](SPIFFS_UPLOAD_GUIDE.md))
 6. Open Serial Monitor (115200 baud) to see status
 
 ### 3. SD Card Setup
@@ -223,15 +223,17 @@ pio run
 # Build SPIFFS filesystem (for web interface)
 pio run --target buildfs
 
+# Upload SPIFFS filesystem to ESP32 (do this FIRST for web interface)
+pio run --target uploadfs
+
 # Upload code to ESP32
 pio run --target upload
-
-# Upload SPIFFS filesystem to ESP32
-pio run --target uploadfs
 
 # Serial monitor
 pio device monitor
 ```
+
+> **Important**: Always upload the SPIFFS filesystem (`uploadfs`) before uploading the main code when making web interface changes. The SPIFFS contains the modern HTML interface stored in `data/index.html`. If SPIFFS upload fails, the ESP32 will use a fallback HTML interface embedded in the code.
 
 ### Adding Songs
 1. Name files as `001.mp3`, `002.mp3`, etc.

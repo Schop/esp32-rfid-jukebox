@@ -963,7 +963,7 @@ void setupWebServer() {
     if (SPIFFS.exists("/index.html")) {
       request->send(SPIFFS, "/index.html", "text/html");
     } else {
-      // Fallback HTML if SPIFFS file doesn't exist
+      // Fallback HTML if SPIFFS file doesn't exist - matches modern design in data/index.html
       String html = R"rawliteral(
 <!DOCTYPE html>
 <html lang="en">
@@ -973,90 +973,257 @@ void setupWebServer() {
     <title>ESP32 RFID Jukebox</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { background-color: #f8f9fa; min-height: 100vh; padding: 20px; }
-        .jukebox-container { background: white; border-radius: 10px; margin: 0 auto; max-width: 800px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .header { background-color: #007bff; color: white; border-radius: 10px 10px 0 0; padding: 20px; text-align: center; }
-        .btn-custom { margin: 2px; }
+        :root {
+            --primary-color: #2563eb;
+            --success-color: #10b981;
+            --danger-color: #ef4444;
+            --warning-color: #f59e0b;
+            --secondary-color: #6b7280;
+            --light-bg: #f8fafc;
+            --card-bg: #ffffff;
+            --border-color: #e5e7eb;
+            --text-primary: #1f2937;
+            --text-secondary: #6b7280;
+        }
+        
+        body {
+            background: var(--light-bg);
+            min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            color: var(--text-primary);
+        }
+        
+        .main-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 1.5rem;
+        }
+        
+        .jukebox-header {
+            background: var(--primary-color);
+            color: white;
+            padding: 2.5rem 2rem;
+            border-radius: 16px;
+            text-align: center;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 25px -5px rgba(37, 99, 235, 0.25);
+        }
+        
+        .jukebox-header h1 {
+            font-size: 2.25rem;
+            font-weight: 700;
+            margin: 0;
+            letter-spacing: -0.025em;
+        }
+        
+        .jukebox-header p {
+            margin: 0.75rem 0 0 0;
+            opacity: 0.9;
+            font-size: 1rem;
+        }
+        
+        .control-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 1.75rem;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+            border: 1px solid var(--border-color);
+            margin-bottom: 1.5rem;
+        }
+        
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 1.25rem;
+        }
+        
+        .btn-modern {
+            border: none;
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            font-weight: 500;
+            font-size: 0.875rem;
+            transition: all 0.15s ease;
+            cursor: pointer;
+            margin: 0.25rem;
+        }
+        
+        .btn-modern:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        
+        .btn-primary-modern {
+            background: var(--primary-color);
+            color: white;
+        }
+        
+        .btn-success-modern {
+            background: var(--success-color);
+            color: white;
+        }
+        
+        .btn-danger-modern {
+            background: var(--danger-color);
+            color: white;
+        }
+        
+        .btn-warning-modern {
+            background: var(--warning-color);
+            color: white;
+        }
+        
+        .btn-secondary-modern {
+            background: var(--secondary-color);
+            color: white;
+        }
+        
+        .btn-outline-modern {
+            background: transparent;
+            border: 2px solid var(--border-color);
+            color: var(--text-primary);
+        }
+        
+        .btn-outline-modern:hover {
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+            color: white;
+        }
+        
+        .form-select-modern {
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            padding: 0.75rem;
+            font-size: 0.875rem;
+            transition: all 0.15s ease;
+            background: white;
+            width: 100%;
+            margin-bottom: 1rem;
+        }
+        
+        .form-select-modern:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+            outline: none;
+        }
+        
+        .response-area {
+            background: #f8fafc;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1rem;
+            font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Roboto Mono', monospace;
+            font-size: 0.8rem;
+            white-space: pre-wrap;
+            min-height: 120px;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+        
+        .controls-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+        }
+        
+        .fallback-notice {
+            background: #fef3c7;
+            border: 1px solid #f59e0b;
+            color: #92400e;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+        
+        .w-100 { width: 100%; }
+        
+        @media (max-width: 768px) {
+            .main-container { padding: 1rem; }
+            .jukebox-header { padding: 2rem 1.5rem; }
+            .control-card { padding: 1.25rem; }
+            .controls-grid { justify-content: center; }
+        }
     </style>
 </head>
 <body>
-    <div class="container-fluid">
-        <div class="jukebox-container">
-            <div class="header">
-                <h1>🎵 ESP32 RFID Jukebox</h1>
-                <p class="mb-0">Web Interface - Static IP: 192.168.1.251</p>
+    <div class="main-container">
+        <!-- Header -->
+        <div class="jukebox-header">
+            <h1>ESP32 RFID Jukebox</h1>
+            <p>Web Interface • Static IP: 192.168.1.251</p>
+        </div>
+        
+        <!-- Fallback Notice -->
+        <div class="fallback-notice">
+            <strong>Note:</strong> SPIFFS filesystem not found. Using fallback interface.
+        </div>
+        
+        <!-- Playback Controls -->
+        <div class="control-card">
+            <h3 class="card-title">Playback Controls</h3>
+            <div class="controls-grid">
+                <button onclick="sendCommand('s')" class="btn btn-modern btn-primary-modern">Status</button>
+                <button onclick="sendCommand('x')" class="btn btn-modern btn-danger-modern">Stop</button>
+                <button onclick="sendCommand('h')" class="btn btn-modern btn-warning-modern">Shuffle</button>
+                <button onclick="sendCommand('l')" class="btn btn-modern btn-secondary-modern">List Songs</button>
             </div>
-            <div class="p-4">
-                <div class="alert alert-warning mb-4">
-                    <strong>Note:</strong> SPIFFS filesystem not found. Using fallback interface.
-                </div>
-                
-                <div class="row g-4">
-                    <div class="col-md-6">
-                        <h5>Playback Controls</h5>
-                        <div class="d-grid gap-2 d-md-flex">
-                            <button onclick="sendCommand('s')" class="btn btn-info btn-custom">Status</button>
-                            <button onclick="sendCommand('x')" class="btn btn-danger btn-custom">Stop</button>
-                            <button onclick="sendCommand('h')" class="btn btn-warning btn-custom">Shuffle</button>
-                            <button onclick="sendCommand('l')" class="btn btn-secondary btn-custom">List Songs</button>
-                        </div>
-                    </div>
-                    
-                    <div class="col-md-6">
-                        <h5>Song Selection</h5>
-                        <select id="songSelect" class="form-select mb-2">
-                            <option value="">Choose a song...</option>
-                            <option value="1">1: Did Jesus Have a Baby Sister - Dory Previn</option>
-                            <option value="2">2: That's All Right - Elvis Presley</option>
-                            <option value="3">3: Hey Joe - Jimi Hendrix</option>
-                            <option value="4">4: Delia's Gone - Johnny Cash</option>
-                            <option value="5">5: In Da Club - 50 Cent</option>
-                            <option value="6">6: Keep the Customer Satisfied - Simon & Garfunkel</option>
-                            <option value="7">7: Thrift Shop - Macklemore & Ryan Lewis</option>
-                            <option value="8">8: Old Man - Neil Young</option>
-                            <option value="9">9: Never Going Back Again - Fleetwood Mac</option>
-                            <option value="10">10: Norwegian Wood (This Bird Has Flown) - The Beatles</option>
-                            <option value="11">11: Chain Gang - Sam Cooke</option>
-                            <option value="12">12: Yakety Yak - The Coasters</option>
-                            <option value="13">13: I've Been Everywhere - Johnny Cash</option>
-                            <option value="14">14: Thunderstruck - AC/DC</option>
-                            <option value="15">15: Duurt Te Lang - Davina Michelle</option>
-                            <option value="16">16: Alles Gaat Voorbij - Doe Maar</option>
-                            <option value="17">17: The Painter - William Ben</option>
-                            <option value="18">18: Think - Aretha Franklin</option>
-                            <option value="19">19: Scotland the Brave - Auld Town Band & Pipes</option>
-                            <option value="20">20: Single Ladies - Beyoncé</option>
-                            <option value="21">21: Grandma's Hands - Bill Withers</option>
-                            <option value="22">22: Without Me - Eminem</option>
-                            <option value="23">23: Spraakwater - Extince</option>
-                            <option value="24">24: King of the World - First Aid Kit</option>
-                            <option value="25">25: Komodovaraan - Yentl en De Boer</option>
-                            <option value="26">26: Look What They've Done To My Song, Ma - Melanie</option>
-                            <option value="27">27: The Man Who Sold The World - Nirvana</option>
-                            <option value="28">28: Rotterdam - Pokey LaFarge</option>
-                            <option value="29">29: 't Roeie Klied - Rowwen Heze</option>
-                            <option value="30">30: You Never Can Tell - Chuck Berry</option>
-                            <option value="31">31: Sit Still, Look Pretty - Daya</option>
-                        </select>
-                        <button onclick="playSong()" class="btn btn-success w-100">Play Selected Song</button>
-                    </div>
-                </div>
-                
-                <div class="row mt-4">
-                    <div class="col-12">
-                        <h5>Programming Mode</h5>
-                        <div class="d-grid gap-2 d-md-flex">
-                            <button onclick="sendCommand('p')" class="btn btn-outline-primary btn-custom">Enter Programming</button>
-                            <button onclick="sendCommand('jukebox')" class="btn btn-outline-secondary btn-custom">Return to Jukebox</button>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="mt-4">
-                    <h5>Response</h5>
-                    <div id="response" class="p-3 bg-light border rounded" style="font-family: monospace; white-space: pre-wrap;">Click a button to see response...</div>
-                </div>
+        </div>
+
+        <!-- Song Selection -->
+        <div class="control-card">
+            <h3 class="card-title">Song Selection</h3>
+            <select id="songSelect" class="form-select form-select-modern">
+                <option value="">Choose a song...</option>
+                <option value="1">1: Did Jesus Have a Baby Sister - Dory Previn</option>
+                <option value="2">2: That's All Right - Elvis Presley</option>
+                <option value="3">3: Hey Joe - Jimi Hendrix</option>
+                <option value="4">4: Delia's Gone - Johnny Cash</option>
+                <option value="5">5: In Da Club - 50 Cent</option>
+                <option value="6">6: Keep the Customer Satisfied - Simon & Garfunkel</option>
+                <option value="7">7: Thrift Shop - Macklemore & Ryan Lewis</option>
+                <option value="8">8: Old Man - Neil Young</option>
+                <option value="9">9: Never Going Back Again - Fleetwood Mac</option>
+                <option value="10">10: Norwegian Wood (This Bird Has Flown) - The Beatles</option>
+                <option value="11">11: Chain Gang - Sam Cooke</option>
+                <option value="12">12: Yakety Yak - The Coasters</option>
+                <option value="13">13: I've Been Everywhere - Johnny Cash</option>
+                <option value="14">14: Thunderstruck - AC/DC</option>
+                <option value="15">15: Duurt Te Lang - Davina Michelle</option>
+                <option value="16">16: Alles Gaat Voorbij - Doe Maar</option>
+                <option value="17">17: The Painter - William Ben</option>
+                <option value="18">18: Think - Aretha Franklin</option>
+                <option value="19">19: Scotland the Brave - Auld Town Band & Pipes</option>
+                <option value="20">20: Single Ladies - Beyoncé</option>
+                <option value="21">21: Grandma's Hands - Bill Withers</option>
+                <option value="22">22: Without Me - Eminem</option>
+                <option value="23">23: Spraakwater - Extince</option>
+                <option value="24">24: King of the World - First Aid Kit</option>
+                <option value="25">25: Komodovaraan - Yentl en De Boer</option>
+                <option value="26">26: Look What They've Done To My Song, Ma - Melanie</option>
+                <option value="27">27: The Man Who Sold The World - Nirvana</option>
+                <option value="28">28: Rotterdam - Pokey LaFarge</option>
+                <option value="29">29: 't Roeie Klied - Rowwen Heze</option>
+                <option value="30">30: You Never Can Tell - Chuck Berry</option>
+                <option value="31">31: Sit Still, Look Pretty - Daya</option>
+            </select>
+            <button onclick="playSong()" class="btn btn-modern btn-success-modern w-100">Play Selected</button>
+        </div>
+
+        <!-- Programming Mode -->
+        <div class="control-card">
+            <h3 class="card-title">Programming Mode</h3>
+            <div class="controls-grid">
+                <button onclick="sendCommand('p')" class="btn btn-modern btn-outline-modern">Enter Programming</button>
+                <button onclick="sendCommand('jukebox')" class="btn btn-modern btn-outline-modern">Return to Jukebox</button>
             </div>
+        </div>
+
+        <!-- Response Area -->
+        <div class="control-card">
+            <h3 class="card-title">System Response</h3>
+            <div id="response" class="response-area">Click a button to see response...</div>
         </div>
     </div>
     
@@ -1064,13 +1231,19 @@ void setupWebServer() {
         function sendCommand(cmd) {
             document.getElementById('response').innerHTML = 'Sending command...';
             fetch('/cmd?c=' + cmd)
+                .then(response => {
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    return response;
+                })
                 .then(() => setTimeout(() => {
                     fetch('/response')
                         .then(response => response.text())
-                        .then(data => document.getElementById('response').innerHTML = data.replace(/\n/g, '<br>'));
+                        .then(data => {
+                            document.getElementById('response').innerHTML = data.replace(/\n/g, '<br>');
+                        });
                 }, 500))
                 .catch(error => {
-                    document.getElementById('response').innerHTML = 'Error: ' + error;
+                    document.getElementById('response').innerHTML = 'Error: ' + error.message;
                 });
         }
         
@@ -1083,13 +1256,19 @@ void setupWebServer() {
             
             document.getElementById('response').innerHTML = 'Playing song ' + songNumber + '...';
             fetch('/play?song=' + songNumber)
+                .then(response => {
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    return response;
+                })
                 .then(() => setTimeout(() => {
                     fetch('/response')
                         .then(response => response.text())
-                        .then(data => document.getElementById('response').innerHTML = data.replace(/\n/g, '<br>'));
+                        .then(data => {
+                            document.getElementById('response').innerHTML = data.replace(/\n/g, '<br>');
+                        });
                 }, 500))
                 .catch(error => {
-                    document.getElementById('response').innerHTML = 'Error: ' + error;
+                    document.getElementById('response').innerHTML = 'Error: ' + error.message;
                 });
         }
     </script>
