@@ -485,7 +485,7 @@ void handleSerialCommands() {
       case 'l':
         // List all songs
         Serial.println(F("\n=== Song List ==="));
-        for (int i = 1; i <= 31; i++) {
+        for (int i = 1; i <= 41; i++) {
           Serial.print("Track ");
           if (i < 10) Serial.print("0");
           Serial.print(i);
@@ -888,6 +888,16 @@ String getSongInfo(int trackNumber) {
     case 29: return "'t Roeie Klied - Rowwen Heze";
     case 30: return "You Never Can Tell - Chuck Berry";
     case 31: return "Sit Still, Look Pretty - Daya";
+    case 32: return "Gangsta's Paradise - Coolio ft. L.V.";
+    case 33: return "Me And Bobby McGee - Janis Joplin";
+    case 34: return "Big River - Johnny Cash";
+    case 35: return "Non, Non, Rien N'a Changé - Les Poppys";
+    case 36: return "Over in the Glory Land - The Broken Circle Breakdown";
+    case 37: return "Hell's Comin' With Me - Poor Man's Poison";
+    case 38: return "A far l'amore comincia tu - Raffaella Carrà";
+    case 39: return "Auto, Vliegtuug - Rowwen Hèze";
+    case 40: return "Stuck In The Middle With You - Stealers Wheel";
+    case 41: return "Lonely Boy - The Black Keys";
     default: return "Unknown Track #" + String(trackNumber);
   }
 }
@@ -1236,6 +1246,16 @@ void setupWebServer() {
                 <option value="29">29: 't Roeie Klied - Rowwen Heze</option>
                 <option value="30">30: You Never Can Tell - Chuck Berry</option>
                 <option value="31">31: Sit Still, Look Pretty - Daya</option>
+                <option value="32">32: Gangsta's Paradise - Coolio ft. L.V.</option>
+                <option value="33">33: Me And Bobby McGee - Janis Joplin</option>
+                <option value="34">34: Big River - Johnny Cash</option>
+                <option value="35">35: Non, Non, Rien N'a Changé - Les Poppys</option>
+                <option value="36">36: Over in the Glory Land - The Broken Circle Breakdown</option>
+                <option value="37">37: Hell's Comin' With Me - Poor Man's Poison</option>
+                <option value="38">38: A far l'amore comincia tu - Raffaella Carrà</option>
+                <option value="39">39: Auto, Vliegtuug - Rowwen Hèze</option>
+                <option value="40">40: Stuck In The Middle With You - Stealers Wheel</option>
+                <option value="41">41: Lonely Boy - The Black Keys</option>
             </select>
             <button onclick="playSong()" class="btn btn-modern btn-success-modern w-100">Play Selected</button>
         </div>
@@ -1335,7 +1355,7 @@ void setupWebServer() {
     if (request->hasParam("song")) {
       String songParam = request->getParam("song")->value();
       int songNumber = songParam.toInt();
-      if (songNumber >= 1 && songNumber <= 31) {
+      if (songNumber >= 1 && songNumber <= 41) {
         // Stop current song and play new one
         myDFPlayer.stop();
         delay(100);
@@ -1346,7 +1366,7 @@ void setupWebServer() {
         wifiResponse = "PLAY: Playing track #" + String(songNumber) + " - " + getSongInfo(songNumber);
         request->send(200, "text/plain", "Song " + String(songNumber) + " started");
       } else {
-        wifiResponse = "ERROR: Invalid song number. Must be 1-31.";
+        wifiResponse = "ERROR: Invalid song number. Must be 1-41.";
         request->send(400, "text/plain", "Invalid song number");
       }
     } else {
@@ -1405,7 +1425,7 @@ String processCommand(char command) {
       
     case 'l':
       wifiResponse = "=== Song List ===\n";
-      for (int i = 1; i <= 31; i++) {
+      for (int i = 1; i <= 41; i++) {
         wifiResponse += "Track ";
         if (i < 10) wifiResponse += "0";
         wifiResponse += String(i) + ": " + getSongInfo(i) + "\n";
