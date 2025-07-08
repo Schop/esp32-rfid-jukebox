@@ -101,6 +101,7 @@ bool wifiSetupComplete = false;
 void setupWebServer();
 void handleWebCommand(char command);
 String processCommand(char command);
+String processJukeboxCommand();
 
 // RFID Programming functions
 void programmerMode();
@@ -924,7 +925,6 @@ void setupWebServer() {
     .section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
     .button { display: inline-block; margin: 5px; padding: 10px 20px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px; border: none; cursor: pointer; }
     .button:hover { background-color: #0056b3; }
-    .volume { background-color: #28a745; }
     .control { background-color: #17a2b8; }
     .system { background-color: #dc3545; }
     .response { background-color: #f8f9fa; padding: 10px; border-radius: 5px; margin-top: 10px; min-height: 50px; border: 1px solid #dee2e6; }
@@ -936,32 +936,25 @@ void setupWebServer() {
     <h1>ESP32 RFID Jukebox</h1>
     
     <div class="section">
-      <h3>Volume Control</h3>
-      <a href="/cmd?c=v" class="button volume">Check Volume</a>
-      <a href="/cmd?c=+" class="button volume">Volume Up</a>
-      <a href="/cmd?c=-" class="button volume">Volume Down</a>
-    </div>
-    
-    <div class="section">
       <h3>Music Control</h3>
-      <a href="/cmd?c=s" class="button control">Player Status</a>
-      <a href="/cmd?c=l" class="button control">List Songs</a>
+      <button onclick="sendCommand('s')" class="button control">Player Status</button>
+      <button onclick="sendCommand('l')" class="button control">List Songs</button>
     </div>
     
     <div class="section">
       <h3>Programming Mode</h3>
-      <a href="/cmd?c=p" class="button control">Enter Programming</a>
-      <a href="/cmd?c=jukebox" class="button control">Return to Jukebox</a>
+      <button onclick="sendCommand('p')" class="button control">Enter Programming</button>
+      <button onclick="sendCommand('jukebox')" class="button control">Return to Jukebox</button>
     </div>
     
     <div class="section">
       <h3>System Control</h3>
-      <a href="/cmd?c=r" class="button system">Reset ESP32</a>
+      <button onclick="sendCommand('r')" class="button system">Reset ESP32</button>
     </div>
     
     <div class="section">
       <h3>Custom Command</h3>
-      <input type="text" id="customCmd" class="command-input" placeholder="Enter single character command (s, v, +, -, l, p, r)">
+      <input type="text" id="customCmd" class="command-input" placeholder="Enter single character command (s, l, p, r)">
       <button onclick="sendCustomCommand()" class="button">Send Command</button>
     </div>
     
@@ -972,25 +965,37 @@ void setupWebServer() {
   </div>
   
   <script>
-    function sendCustomCommand() {
-      const cmd = document.getElementById('customCmd').value;
-      if (cmd.length === 1) {
-        window.location.href = '/cmd?c=' + cmd;
-      } else {
-        alert('Please enter a single character command');
-      }
+    function sendCommand(cmd) {
+      const responseDiv = document.getElementById('response');
+      responseDiv.innerHTML = 'Sending command...';
+      
+      fetch('/cmd?c=' + cmd)
+        .then(response => response.text())
+        .then(data => {
+          // Wait a moment for the command to be processed
+          setTimeout(() => {
+            fetch('/response')
+              .then(response => response.text())
+              .then(data => {
+                responseDiv.innerHTML = data.replace(/\n/g, '<br>');
+              })
+              .catch(error => {
+                responseDiv.innerHTML = 'Error fetching response: ' + error;
+              });
+          }, 500);
+        })
+        .catch(error => {
+          responseDiv.innerHTML = 'Error sending command: ' + error;
+        });
     }
     
-    // Auto-refresh response every 2 seconds if on command page
-    if (window.location.search.includes('c=')) {
-      setTimeout(() => {
-        const response = document.getElementById('response');
-        fetch('/response')
-          .then(response => response.text())
-          .then(data => {
-            document.getElementById('response').innerHTML = data.replace(/\n/g, '<br>');
-          });
-      }, 500);
+    function sendCustomCommand() {
+      const cmd = document.getElementById('customCmd').value;
+      if (cmd.length >= 1) {
+        sendCommand(cmd);
+      } else {
+        alert('Please enter a command');
+      }
     }
   </script>
 </body>
@@ -1003,13 +1008,15 @@ void setupWebServer() {
   server.on("/cmd", HTTP_GET, [](AsyncWebServerRequest *request){
     if (request->hasParam("c")) {
       String command = request->getParam("c")->value();
-      if (command.length() == 1) {
-        char cmd = command.charAt(0);
-        wifiResponse = processCommand(cmd);
-        request->send(200, "text/html", 
-          "<!DOCTYPE HTML><html><head><title>Command Sent</title>"
-          "<meta http-equiv='refresh' content='0;url=/'>"
-          "</head><body>Command sent: " + command + "</body></html>");
+      if (command.length() >= 1) {
+        // Handle 'jukebox' command specially
+        if (command == "jukebox") {
+          wifiResponse = processJukeboxCommand();
+        } else {
+          char cmd = command.charAt(0);
+          wifiResponse = processCommand(cmd);
+        }
+        request->send(200, "text/plain", "Command processed");
       } else {
         request->send(400, "text/plain", "Invalid command");
       }
@@ -1066,30 +1073,6 @@ String processCommand(char command) {
       ESP.restart();
       break;
       
-    case 'v':
-      wifiResponse = "Current volume: " + String(currentVolume);
-      break;
-      
-    case '+':
-      if (currentVolume < MAX_VOLUME) {
-        currentVolume++;
-        myDFPlayer.volume(currentVolume);
-        wifiResponse = "VOLUME: Volume up: " + String(currentVolume);
-      } else {
-        wifiResponse = "VOLUME: Volume already at maximum (" + String(MAX_VOLUME) + ")";
-      }
-      break;
-      
-    case '-':
-      if (currentVolume > MIN_VOLUME) {
-        currentVolume--;
-        myDFPlayer.volume(currentVolume);
-        wifiResponse = "VOLUME: Volume down: " + String(currentVolume);
-      } else {
-        wifiResponse = "VOLUME: Volume already at minimum (" + String(MIN_VOLUME) + ")";
-      }
-      break;
-      
     case 'l':
       wifiResponse = "=== Song List ===\n";
       for (int i = 1; i <= 31; i++) {
@@ -1115,9 +1098,20 @@ String processCommand(char command) {
       
     default:
       wifiResponse = "Unknown command: " + String(command) + "\n";
-      wifiResponse += "Available commands: s=state, r=reset, v=volume, +=vol up, -=vol down, l=list songs, p=program mode";
+      wifiResponse += "Available commands: s=state, r=reset, l=list songs, p=program mode";
       break;
   }
   
   return wifiResponse;
+}
+
+String processJukeboxCommand() {
+  if (!jukeboxMode) {
+    jukeboxMode = true;
+    programmerModeType = "";
+    programmerAutoReady = false;
+    return "JUKEBOX: === JUKEBOX MODE ACTIVATED ===\nPlace an RFID card on the reader to play a song";
+  } else {
+    return "Already in jukebox mode";
+  }
 }
