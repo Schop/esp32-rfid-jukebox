@@ -55,6 +55,7 @@
 #include <DFRobotDFPlayerMini.h>
 #include <WiFi.h>
 #include <ESPAsyncWebServer.h>
+#include <SPIFFS.h>
 
 // ESP32 Pin definitions for RC522 (same as RFID programmer)
 #define RST_PIN         21          // Reset pin
@@ -160,15 +161,22 @@ void setup() {
   Serial.println(F("\n=== ESP32 RFID Jukebox Starting ==="));
   Serial.println(F("Step 1: Serial initialized"));
   
+  // Initialize SPIFFS for web interface files
+  if (!SPIFFS.begin(true)) {
+    Serial.println(F("ERROR: SPIFFS mount failed"));
+  } else {
+    Serial.println(F("Step 2: SPIFFS initialized"));
+  }
+  
   // Initialize SPI first
   SPI.begin();                              // Init SPI bus
-  Serial.println(F("Step 2: SPI initialized"));
+  Serial.println(F("Step 3: SPI initialized"));
   delay(100);
   
   // Initialize RFID
   mfrc522.PCD_Init();                       // Init MFRC522 card
   mfrc522.PCD_SetAntennaGain(mfrc522.RxGain_max);
-  Serial.println(F("Step 3: RFID initialized"));
+  Serial.println(F("Step 4: RFID initialized"));
   
   // Initialize button pins with internal pull-up resistors
   pinMode(PLAY_PAUSE_BUTTON, INPUT_PULLUP);
@@ -176,10 +184,10 @@ void setup() {
   pinMode(PREV_BUTTON, INPUT_PULLUP);
   pinMode(NEXT_BUTTON, INPUT_PULLUP);
   pinMode(RESET_BUTTON, INPUT_PULLUP);
-  Serial.println(F("Step 4: Buttons initialized"));
+  Serial.println(F("Step 5: Buttons initialized"));
 
   // Initialize DFPlayer (this might be the problem)
-  Serial.println(F("Step 5: Initializing DFPlayer Mini... (May take 3~5 seconds)"));
+  Serial.println(F("Step 6: Initializing DFPlayer Mini... (May take 3~5 seconds)"));
   dfPlayerSerial.begin(9600, SERIAL_8N1, 16, 17); // Hardware Serial2: RX=16, TX=17
   delay(500);
 
@@ -199,7 +207,7 @@ void setup() {
   }
   
   // Start WiFi connection in non-blocking mode
-  Serial.println(F("Step 6: Starting WiFi connection (non-blocking)..."));
+  Serial.println(F("Step 7: Starting WiFi connection (non-blocking)..."));
   setupWiFi();
   
   Serial.println(F("=== ESP32 RFID Jukebox Ready ==="));
@@ -949,221 +957,147 @@ void setupWebServer() {
     return;
   }
   
-  // Main web page
+  // Main web page - serve from SPIFFS with fallback
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
-    String html = R"rawliteral(
-<!DOCTYPE HTML>
-<html>
+    // First try to serve from SPIFFS
+    if (SPIFFS.exists("/index.html")) {
+      request->send(SPIFFS, "/index.html", "text/html");
+    } else {
+      // Fallback HTML if SPIFFS file doesn't exist
+      String html = R"rawliteral(
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <title>ESP32 RFID Jukebox</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <style>
-    body { font-family: Arial, sans-serif; margin: 20px; background-color: #f0f0f0; }
-    .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-    h1 { color: #333; text-align: center; }
-    .section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
-    .button { display: inline-block; margin: 5px; padding: 10px 20px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px; border: none; cursor: pointer; }
-    .button:hover { background-color: #0056b3; }
-    .control { background-color: #17a2b8; }
-    .system { background-color: #dc3545; }
-    .play { background-color: #28a745; }
-    .shuffle { background-color: #ffc107; color: #212529; }
-    .response { background-color: #f8f9fa; padding: 10px; border-radius: 5px; margin-top: 10px; min-height: 50px; border: 1px solid #dee2e6; }
-    .command-input { width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #ddd; border-radius: 5px; }
-    .song-select { width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #ddd; border-radius: 5px; }
-    .song-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 5px; margin-top: 10px; }
-    .song-button { padding: 8px; font-size: 12px; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESP32 RFID Jukebox</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f8f9fa; min-height: 100vh; padding: 20px; }
+        .jukebox-container { background: white; border-radius: 10px; margin: 0 auto; max-width: 800px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .header { background-color: #007bff; color: white; border-radius: 10px 10px 0 0; padding: 20px; text-align: center; }
+        .btn-custom { margin: 2px; }
+    </style>
 </head>
 <body>
-  <div class="container">
-    <h1>ESP32 RFID Jukebox</h1>
-    
-    <div class="section">
-      <h3>Music Control</h3>
-      <button onclick="sendCommand('s')" class="button control">Player Status</button>
-      <button onclick="sendCommand('x')" class="button control">Stop Current Song</button>
-      <button onclick="sendCommand('h')" class="button shuffle">Shuffle All Songs</button>
+    <div class="container-fluid">
+        <div class="jukebox-container">
+            <div class="header">
+                <h1>🎵 ESP32 RFID Jukebox</h1>
+                <p class="mb-0">Web Interface - Static IP: 192.168.1.251</p>
+            </div>
+            <div class="p-4">
+                <div class="alert alert-warning mb-4">
+                    <strong>Note:</strong> SPIFFS filesystem not found. Using fallback interface.
+                </div>
+                
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <h5>Playback Controls</h5>
+                        <div class="d-grid gap-2 d-md-flex">
+                            <button onclick="sendCommand('s')" class="btn btn-info btn-custom">Status</button>
+                            <button onclick="sendCommand('x')" class="btn btn-danger btn-custom">Stop</button>
+                            <button onclick="sendCommand('h')" class="btn btn-warning btn-custom">Shuffle</button>
+                            <button onclick="sendCommand('l')" class="btn btn-secondary btn-custom">List Songs</button>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <h5>Song Selection</h5>
+                        <select id="songSelect" class="form-select mb-2">
+                            <option value="">Choose a song...</option>
+                            <option value="1">1: Did Jesus Have a Baby Sister - Dory Previn</option>
+                            <option value="2">2: That's All Right - Elvis Presley</option>
+                            <option value="3">3: Hey Joe - Jimi Hendrix</option>
+                            <option value="4">4: Delia's Gone - Johnny Cash</option>
+                            <option value="5">5: In Da Club - 50 Cent</option>
+                            <option value="6">6: Keep the Customer Satisfied - Simon & Garfunkel</option>
+                            <option value="7">7: Thrift Shop - Macklemore & Ryan Lewis</option>
+                            <option value="8">8: Old Man - Neil Young</option>
+                            <option value="9">9: Never Going Back Again - Fleetwood Mac</option>
+                            <option value="10">10: Norwegian Wood (This Bird Has Flown) - The Beatles</option>
+                            <option value="11">11: Chain Gang - Sam Cooke</option>
+                            <option value="12">12: Yakety Yak - The Coasters</option>
+                            <option value="13">13: I've Been Everywhere - Johnny Cash</option>
+                            <option value="14">14: Thunderstruck - AC/DC</option>
+                            <option value="15">15: Duurt Te Lang - Davina Michelle</option>
+                            <option value="16">16: Alles Gaat Voorbij - Doe Maar</option>
+                            <option value="17">17: The Painter - William Ben</option>
+                            <option value="18">18: Think - Aretha Franklin</option>
+                            <option value="19">19: Scotland the Brave - Auld Town Band & Pipes</option>
+                            <option value="20">20: Single Ladies - Beyoncé</option>
+                            <option value="21">21: Grandma's Hands - Bill Withers</option>
+                            <option value="22">22: Without Me - Eminem</option>
+                            <option value="23">23: Spraakwater - Extince</option>
+                            <option value="24">24: King of the World - First Aid Kit</option>
+                            <option value="25">25: Komodovaraan - Yentl en De Boer</option>
+                            <option value="26">26: Look What They've Done To My Song, Ma - Melanie</option>
+                            <option value="27">27: The Man Who Sold The World - Nirvana</option>
+                            <option value="28">28: Rotterdam - Pokey LaFarge</option>
+                            <option value="29">29: 't Roeie Klied - Rowwen Heze</option>
+                            <option value="30">30: You Never Can Tell - Chuck Berry</option>
+                            <option value="31">31: Sit Still, Look Pretty - Daya</option>
+                        </select>
+                        <button onclick="playSong()" class="btn btn-success w-100">Play Selected Song</button>
+                    </div>
+                </div>
+                
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <h5>Programming Mode</h5>
+                        <div class="d-grid gap-2 d-md-flex">
+                            <button onclick="sendCommand('p')" class="btn btn-outline-primary btn-custom">Enter Programming</button>
+                            <button onclick="sendCommand('jukebox')" class="btn btn-outline-secondary btn-custom">Return to Jukebox</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-4">
+                    <h5>Response</h5>
+                    <div id="response" class="p-3 bg-light border rounded" style="font-family: monospace; white-space: pre-wrap;">Click a button to see response...</div>
+                </div>
+            </div>
+        </div>
     </div>
     
-    <div class="section">
-      <h3>Song Selection</h3>
-      <select id="songSelect" class="song-select">
-        <option value="">Choose a song to play...</option>
-        <option value="1">01: Did Jesus Have a Baby Sister - Dory Previn</option>
-        <option value="2">02: That's All Right - Elvis Presley</option>
-        <option value="3">03: Hey Joe - Jimi Hendrix</option>
-        <option value="4">04: Delia's Gone - Johnny Cash</option>
-        <option value="5">05: In Da Club - 50 Cent</option>
-        <option value="6">06: Keep the Customer Satisfied - Simon & Garfunkel</option>
-        <option value="7">07: Thrift Shop - Macklemore & Ryan Lewis</option>
-        <option value="8">08: Old Man - Neil Young</option>
-        <option value="9">09: Never Going Back Again - Fleetwood Mac</option>
-        <option value="10">10: Norwegian Wood (This Bird Has Flown) - The Beatles</option>
-        <option value="11">11: Chain Gang - Sam Cooke</option>
-        <option value="12">12: Yakety Yak - The Coasters</option>
-        <option value="13">13: I've Been Everywhere - Johnny Cash</option>
-        <option value="14">14: Thunderstruck - AC/DC</option>
-        <option value="15">15: Duurt Te Lang - Davina Michelle</option>
-        <option value="16">16: Alles Gaat Voorbij - Doe Maar</option>
-        <option value="17">17: The Painter - William Ben</option>
-        <option value="18">18: Think - Aretha Franklin</option>
-        <option value="19">19: Scotland the Brave - Auld Town Band & Pipes</option>
-        <option value="20">20: Single Ladies - Beyoncé</option>
-        <option value="21">21: Grandma's Hands - Bill Withers</option>
-        <option value="22">22: Without Me - Eminem</option>
-        <option value="23">23: Spraakwater - Extince</option>
-        <option value="24">24: King of the World - First Aid Kit</option>
-        <option value="25">25: Komodovaraan - Yentl en De Boer</option>
-        <option value="26">26: Look What They've Done To My Song, Ma - Melanie</option>
-        <option value="27">27: The Man Who Sold The World - Nirvana</option>
-        <option value="28">28: Rotterdam - Pokey LaFarge</option>
-        <option value="29">29: 't Roeie Klied - Rowwen Heze</option>
-        <option value="30">30: You Never Can Tell - Chuck Berry</option>
-        <option value="31">31: Sit Still, Look Pretty - Daya</option>
-      </select>
-      <button onclick="playSong()" class="button play">Play Selected Song</button>
-      <div class="song-grid">
-        <button onclick="sendSongCommand('1')" class="button play song-button">1</button>
-        <button onclick="sendSongCommand('2')" class="button play song-button">2</button>
-        <button onclick="sendSongCommand('3')" class="button play song-button">3</button>
-        <button onclick="sendSongCommand('4')" class="button play song-button">4</button>
-        <button onclick="sendSongCommand('5')" class="button play song-button">5</button>
-        <button onclick="sendSongCommand('6')" class="button play song-button">6</button>
-        <button onclick="sendSongCommand('7')" class="button play song-button">7</button>
-        <button onclick="sendSongCommand('8')" class="button play song-button">8</button>
-        <button onclick="sendSongCommand('9')" class="button play song-button">9</button>
-        <button onclick="sendSongCommand('10')" class="button play song-button">10</button>
-        <button onclick="sendSongCommand('11')" class="button play song-button">11</button>
-        <button onclick="sendSongCommand('12')" class="button play song-button">12</button>
-        <button onclick="sendSongCommand('13')" class="button play song-button">13</button>
-        <button onclick="sendSongCommand('14')" class="button play song-button">14</button>
-        <button onclick="sendSongCommand('15')" class="button play song-button">15</button>
-        <button onclick="sendSongCommand('16')" class="button play song-button">16</button>
-        <button onclick="sendSongCommand('17')" class="button play song-button">17</button>
-        <button onclick="sendSongCommand('18')" class="button play song-button">18</button>
-        <button onclick="sendSongCommand('19')" class="button play song-button">19</button>
-        <button onclick="sendSongCommand('20')" class="button play song-button">20</button>
-        <button onclick="sendSongCommand('21')" class="button play song-button">21</button>
-        <button onclick="sendSongCommand('22')" class="button play song-button">22</button>
-        <button onclick="sendSongCommand('23')" class="button play song-button">23</button>
-        <button onclick="sendSongCommand('24')" class="button play song-button">24</button>
-        <button onclick="sendSongCommand('25')" class="button play song-button">25</button>
-        <button onclick="sendSongCommand('26')" class="button play song-button">26</button>
-        <button onclick="sendSongCommand('27')" class="button play song-button">27</button>
-        <button onclick="sendSongCommand('28')" class="button play song-button">28</button>
-        <button onclick="sendSongCommand('29')" class="button play song-button">29</button>
-        <button onclick="sendSongCommand('30')" class="button play song-button">30</button>
-        <button onclick="sendSongCommand('31')" class="button play song-button">31</button>
-      </div>
-    </div>
-    
-    <div class="section">
-      <h3>Information</h3>
-      <button onclick="sendCommand('l')" class="button control">List All Songs</button>
-    </div>
-    
-    <div class="section">
-      <h3>Programming Mode</h3>
-      <button onclick="sendCommand('p')" class="button control">Enter Programming</button>
-      <button onclick="sendCommand('jukebox')" class="button control">Return to Jukebox</button>
-    </div>
-    
-    <div class="section">
-      <h3>System Control</h3>
-      <button onclick="sendCommand('r')" class="button system">Reset ESP32</button>
-    </div>
-    
-    <div class="section">
-      <h3>Custom Command</h3>
-      <input type="text" id="customCmd" class="command-input" placeholder="Enter command (s, l, p, r, x, h, or song number)">
-      <button onclick="sendCustomCommand()" class="button">Send Command</button>
-    </div>
-    
-    <div class="section">
-      <h3>Response</h3>
-      <div id="response" class="response">Click a button to see the response...</div>
-    </div>
-  </div>
-  
-  <script>
-    function sendCommand(cmd) {
-      const responseDiv = document.getElementById('response');
-      responseDiv.innerHTML = 'Sending command...';
-      
-      fetch('/cmd?c=' + cmd)
-        .then(response => response.text())
-        .then(data => {
-          // Wait a moment for the command to be processed
-          setTimeout(() => {
-            fetch('/response')
-              .then(response => response.text())
-              .then(data => {
-                responseDiv.innerHTML = data.replace(/\n/g, '<br>');
-              })
-              .catch(error => {
-                responseDiv.innerHTML = 'Error fetching response: ' + error;
-              });
-          }, 500);
-        })
-        .catch(error => {
-          responseDiv.innerHTML = 'Error sending command: ' + error;
-        });
-    }
-    
-    function sendSongCommand(songNumber) {
-      const responseDiv = document.getElementById('response');
-      responseDiv.innerHTML = 'Playing song ' + songNumber + '...';
-      
-      fetch('/play?song=' + songNumber)
-        .then(response => response.text())
-        .then(data => {
-          setTimeout(() => {
-            fetch('/response')
-              .then(response => response.text())
-              .then(data => {
-                responseDiv.innerHTML = data.replace(/\n/g, '<br>');
-              })
-              .catch(error => {
-                responseDiv.innerHTML = 'Error fetching response: ' + error;
-              });
-          }, 500);
-        })
-        .catch(error => {
-          responseDiv.innerHTML = 'Error playing song: ' + error;
-        });
-    }
-    
-    function playSong() {
-      const songSelect = document.getElementById('songSelect');
-      const songNumber = songSelect.value;
-      if (songNumber) {
-        sendSongCommand(songNumber);
-        songSelect.value = ''; // Reset selection
-      } else {
-        alert('Please select a song first');
-      }
-    }
-    
-    function sendCustomCommand() {
-      const cmd = document.getElementById('customCmd').value;
-      if (cmd.length >= 1) {
-        // Check if it's a number (song selection)
-        if (!isNaN(cmd) && parseInt(cmd) >= 1 && parseInt(cmd) <= 31) {
-          sendSongCommand(cmd);
-        } else {
-          sendCommand(cmd);
+    <script>
+        function sendCommand(cmd) {
+            document.getElementById('response').innerHTML = 'Sending command...';
+            fetch('/cmd?c=' + cmd)
+                .then(() => setTimeout(() => {
+                    fetch('/response')
+                        .then(response => response.text())
+                        .then(data => document.getElementById('response').innerHTML = data.replace(/\n/g, '<br>'));
+                }, 500))
+                .catch(error => {
+                    document.getElementById('response').innerHTML = 'Error: ' + error;
+                });
         }
-        document.getElementById('customCmd').value = ''; // Clear input
-      } else {
-        alert('Please enter a command');
-      }
-    }
-  </script>
+        
+        function playSong() {
+            const songNumber = document.getElementById('songSelect').value;
+            if (!songNumber) { 
+                alert('Please select a song first!'); 
+                return; 
+            }
+            
+            document.getElementById('response').innerHTML = 'Playing song ' + songNumber + '...';
+            fetch('/play?song=' + songNumber)
+                .then(() => setTimeout(() => {
+                    fetch('/response')
+                        .then(response => response.text())
+                        .then(data => document.getElementById('response').innerHTML = data.replace(/\n/g, '<br>'));
+                }, 500))
+                .catch(error => {
+                    document.getElementById('response').innerHTML = 'Error: ' + error;
+                });
+        }
+    </script>
 </body>
 </html>
 )rawliteral";
-    request->send(200, "text/html", html);
+      request->send(200, "text/html", html);
+    }
   });
   
   // Command endpoint

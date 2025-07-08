@@ -6,12 +6,14 @@ A powerful, feature-rich RFID-controlled music player built with ESP32, featurin
 
 - **RFID Control**: Place cards on reader to instantly play specific songs or playlists
 - **Physical Controls**: Buttons for play/pause, next/previous, shuffle, and system reset
-- **Analog Volume Control**: Smooth potentiometer-based volume adjustment (0-25, distortion-limited)
-- **WiFi Web Interface**: Control via web browser from any device on your network
+- **Software Volume Control**: Digital volume adjustment via serial/web commands (0-30, default 25)
+- **Bootstrap Web Interface**: Modern, responsive web interface with dropdown song selection
+- **Static IP Configuration**: Fixed IP address (192.168.1.251) for reliable web access
 - **Programming Mode**: Write new cards with automatic, manual, or read-only modes
 - **Playlist Support**: Special playlist cards for folder-based music organization
 - **Auto Recovery**: System health monitoring with automatic error recovery
 - **Hardware Serial**: Reliable ESP32 Serial2 communication with DFPlayer Mini
+- **SPIFFS File System**: HTML interface served from flash memory for better maintainability
 
 ## 🔧 Hardware Requirements
 
@@ -19,7 +21,6 @@ A powerful, feature-rich RFID-controlled music player built with ESP32, featurin
 - **ESP32 Dev Module** (38-pin version recommended)
 - **RC522 RFID Reader** with cards/tags
 - **DFPlayer Mini MP3 Module** with microSD card
-- **50kΩ Potentiometer** for volume control
 - **Speaker** (8Ω, 3W recommended)
 - **Breadboard/PCB** for prototyping
 - **Jumper wires** and connectors
@@ -67,10 +68,9 @@ Reset        GPIO 32      System reset
 
 ### Volume Control
 ```
-Potentiometer ESP32 Pin   Description
-Terminal 1    GND         Ground
-Wiper         GPIO 34     Analog input (ADC1_CH6)
-Terminal 3    3.3V        Power (⚠️ NOT 5V!)
+Method           Setting      Description
+Software Control Software    Volume controlled via serial commands (0-30, default 25)
+Web Interface    Bootstrap    Modern responsive web interface with song selection
 ```
 
 ## 🚀 Quick Start
@@ -148,6 +148,26 @@ The system includes multiple volume control methods:
 ### Why Volume Limit?
 Volume is capped at 25 (instead of 30) because higher levels cause audio distortion on most speakers. This provides optimal sound quality while preventing damage.
 
+## 🌐 Web Interface
+
+The jukebox includes a modern Bootstrap-powered web interface accessible at `http://192.168.1.251/`.
+
+### Features
+- **Responsive Design**: Works on desktop, tablet, and mobile devices
+- **Song Dropdown**: Select from a list of all available songs
+- **Playback Controls**: Play, stop, shuffle, and navigation buttons
+- **Programming Access**: Enter programming mode via web interface
+- **System Management**: Reset ESP32 remotely
+- **Live Feedback**: Real-time response display from ESP32
+
+### Interface Sections
+- **Playback Controls**: Stop, Next, Previous, Shuffle buttons
+- **Song Selection**: Dropdown menu with all 31 songs
+- **Information**: Display song list and system status
+- **Programming Mode**: Access card programming features
+- **System Control**: Reset and administrative functions
+- **Custom Commands**: Direct command input for advanced users
+
 ## 🔧 Serial Commands
 
 Connect to Serial Monitor (115200 baud) for debug commands:
@@ -168,6 +188,18 @@ r  - Reset ESP32
 esp32-rfid-jukebox/
 ├── src/
 │   └── main.cpp              # Main application code
+├── data/
+│   └── index.html            # Bootstrap web interface
+├── include/
+├── lib/
+├── test/
+├── docs/                     # Documentation files
+├── platformio.ini            # PlatformIO configuration
+├── README.md                 # This file
+├── CHANGELOG.md              # Version history
+├── LICENSE                   # MIT License
+└── .gitignore               # Git ignore rules
+```
 ├── include/                  # Header files (if any)
 ├── lib/                      # Private libraries
 ├── test/                     # Unit tests
@@ -188,8 +220,14 @@ esp32-rfid-jukebox/
 # Build project
 pio run
 
-# Upload to ESP32
+# Build SPIFFS filesystem (for web interface)
+pio run --target buildfs
+
+# Upload code to ESP32
 pio run --target upload
+
+# Upload SPIFFS filesystem to ESP32
+pio run --target uploadfs
 
 # Serial monitor
 pio device monitor

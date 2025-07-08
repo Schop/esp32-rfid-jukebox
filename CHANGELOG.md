@@ -5,6 +5,36 @@ All notable changes to the ESP32 RFID Jukebox project will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2025-01-08
+
+### Added
+- 🎨 **Bootstrap CSS framework** - Modern, responsive web interface design
+- 📂 **SPIFFS filesystem** - HTML files served from flash memory for better maintainability
+- 📄 **Separate HTML file** - Web interface moved to `data/index.html` for easier editing
+- 🎵 **Dropdown song selection** - Clean interface with song titles and artists
+- 🎨 **Gradient design** - Beautiful visual design with Bootstrap components and custom gradients
+- 📱 **Mobile responsive** - Optimized for mobile, tablet, and desktop devices
+- 🔧 **Enhanced controls** - Status, Stop, Shuffle, and List Songs buttons in main interface
+- ⚡ **Improved user experience** - Loading indicators and better error handling
+
+### Changed
+- 🗑️ **Removed individual song buttons** - Simplified interface with dropdown selection only
+- ⚡ **Cleaner code structure** - HTML separated from C++ for better maintainability
+- 🎚️ **Software-only volume** - Removed potentiometer dependency, volume via commands only
+- 📍 **Fixed static IP** - Consistent 192.168.1.251 address for reliable access
+
+### Removed
+- 🎛️ **Potentiometer volume control** - Now software-controlled only
+- 🔘 **Per-song grid buttons** - Replaced with cleaner dropdown interface
+- 📝 **Embedded HTML** - Moved to external file for better organization
+
+### Technical Changes
+- Added SPIFFS support to platformio.ini
+- Implemented file serving from flash memory
+- Bootstrap 5.3.0 integration with CDN
+- Enhanced web interface with icons and animations
+- Improved build process with SPIFFS filesystem compilation
+
 ## [1.0.0] - 2025-01-03
 
 ### Added
