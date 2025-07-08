@@ -177,17 +177,17 @@ void setup() {
   delay(500);
 
   if (!myDFPlayer.begin(dfPlayerSerial)) {  // Use Hardware Serial
-    Serial.println(F("⚠️  DFPlayer initialization failed:"));
+    Serial.println(F("WARNING: DFPlayer initialization failed:"));
     Serial.println(F("1. Please recheck the connection!"));
     Serial.println(F("2. Please insert the SD card!"));
     Serial.println(F("3. Check if DFPlayer Mini is powered correctly!"));
-    Serial.println(F("⚠️  Continuing without DFPlayer..."));
+    Serial.println(F("WARNING: Continuing without DFPlayer..."));
   } else {
-    Serial.println(F("✅ DFPlayer Mini online!"));
+    Serial.println(F("SUCCESS: DFPlayer Mini online!"));
     myDFPlayer.setTimeOut(1000);
     myDFPlayer.EQ(DFPLAYER_EQ_BASS);
     myDFPlayer.volume(currentVolume);  // Set volume using our variable
-    Serial.print(F("🔊 Volume set to: "));
+    Serial.print(F("VOLUME: Volume set to: "));
     Serial.println(currentVolume);
   }
   
@@ -196,17 +196,17 @@ void setup() {
   setupWiFi();
   
   Serial.println(F("=== ESP32 RFID Jukebox Ready ==="));
-  Serial.println(F("🎵 JUKEBOX MODE: Place an RFID card on the reader to play a song"));
+  Serial.println(F("JUKEBOX: Place an RFID card on the reader to play a song"));
   Serial.println(F("Use buttons for manual control:"));
   Serial.println(F("- Play/Pause: GPIO 26"));
   Serial.println(F("- Next: GPIO 25"));
   Serial.println(F("- Previous: GPIO 33"));
   Serial.println(F("- Shuffle: GPIO 27"));
   Serial.println(F("- Reset: GPIO 32"));
-  Serial.println(F("🎚️ Volume Control: Software control via serial/web commands (0-30, default 25)"));
-  Serial.println(F("\n📝 PROGRAMMING MODE: Type 'program' to enter card programming mode"));
-  Serial.println(F("💿 Commands: l=song list, v=volume, +=vol up, -=vol down, s=status"));
-  Serial.println(F("🕸️  Web Interface: Will be available once WiFi connects..."));
+  Serial.println(F("VOLUME: Software control via serial/web commands (0-30, default 25)"));
+  Serial.println(F("\nPROGRAMMING: Type 'program' to enter card programming mode"));
+  Serial.println(F("COMMANDS: l=song list, v=volume, +=vol up, -=vol down, s=status"));
+  Serial.println(F("WEB: Web Interface will be available once WiFi connects..."));
 }
 
 //*****************************************************************************
@@ -221,7 +221,7 @@ void loop() {
     handleButtons();
     handleRFID();
     handleSerialCommands();
-    performSystemCheck();
+    // performSystemCheck();
   } else {
     // Programming mode - RFID card programming
     programmerMode();
@@ -242,11 +242,11 @@ void handleButtons() {
     if (isPlaying) {
       myDFPlayer.pause();
       isPlaying = false;
-      Serial.println("⏸ Paused");
+      Serial.println("PAUSE: Paused");
     } else {
       myDFPlayer.start();
       isPlaying = true;
-      Serial.println("▶ Playing");
+      Serial.println("PLAY: Playing");
     }
     delay(50); // Debounce delay
   }
@@ -254,7 +254,7 @@ void handleButtons() {
   // Check for falling edge on shuffle button
   if (currentShuffleButtonState == LOW && previousShuffleButtonState == HIGH) {
     myDFPlayer.randomAll();
-    Serial.println("🔀 Shuffle Play");
+    Serial.println("SHUFFLE: Shuffle Play");
     isPlaying = true;
     delay(50); // Debounce delay
   }
@@ -263,7 +263,7 @@ void handleButtons() {
   if (currentNextButtonState == LOW && previousNextButtonState == HIGH) {
     myDFPlayer.next();
     currentSong = currentSong + 1;
-    Serial.println("⏭️ Next track");
+    Serial.println("NEXT: Next track");
     delay(50); // Debounce delay
   }
 
@@ -271,7 +271,7 @@ void handleButtons() {
   if (currentPrevButtonState == LOW && previousPrevButtonState == HIGH) {
     myDFPlayer.previous();
     currentSong = currentSong - 1;
-    Serial.println("⏮️ Previous track");
+    Serial.println("PREVIOUS: Previous track");
     delay(50); // Debounce delay
   }
 
@@ -307,7 +307,7 @@ void handleRFID() {
       return;
     }
     
-    Serial.println(F("\n🎵 **Card Detected** 🎵"));
+    Serial.println(F("\nCARD: **Card Detected**"));
     
     // Dump some details about the card
     Serial.print(F("Card UID: "));
@@ -379,7 +379,7 @@ void playCardNumber(int number) {
     if (number == -7) {
       // Shuffle card - start random play mode
       myDFPlayer.randomAll();
-      Serial.println("🔀 Shuffle mode activated - Playing random tracks");
+      Serial.println("SHUFFLE: Shuffle mode activated - Playing random tracks");
       isPlaying = true;
     } else {
       // Play from specific folder
@@ -400,9 +400,9 @@ void playCardNumber(int number) {
     currentSong = number;
     isPlaying = true;
     
-    Serial.print("🎵 Playing track #");
+    Serial.print("PLAY: Playing track #");
     Serial.println(number);
-    Serial.print("🎤 ");
+    Serial.print("TRACK: ");
     Serial.println(getSongInfo(number));
     Serial.print(F("Volume: "));
     Serial.println(currentVolume);
@@ -444,10 +444,10 @@ void handleSerialCommands() {
         if (currentVolume < MAX_VOLUME) {
           currentVolume++;
           myDFPlayer.volume(currentVolume);
-          Serial.print("🔊 Volume up: ");
+          Serial.print("VOLUME: Volume up: ");
           Serial.println(currentVolume);
         } else {
-          Serial.print("🔊 Volume already at maximum (");
+          Serial.print("VOLUME: Volume already at maximum (");
           Serial.print(MAX_VOLUME);
           Serial.println(")");
         }
@@ -458,10 +458,10 @@ void handleSerialCommands() {
         if (currentVolume > MIN_VOLUME) {
           currentVolume--;
           myDFPlayer.volume(currentVolume);
-          Serial.print("🔉 Volume down: ");
+          Serial.print("VOLUME: Volume down: ");
           Serial.println(currentVolume);
         } else {
-          Serial.print("🔇 Volume already at minimum (");
+          Serial.print("VOLUME: Volume already at minimum (");
           Serial.print(MIN_VOLUME);
           Serial.println(")");
         }
@@ -469,7 +469,7 @@ void handleSerialCommands() {
         
       case 'l':
         // List all songs
-        Serial.println(F("\n🎵 === Song List === 🎵"));
+        Serial.println(F("\n=== Song List ==="));
         for (int i = 1; i <= 31; i++) {
           Serial.print("Track ");
           if (i < 10) Serial.print("0");
@@ -486,7 +486,7 @@ void handleSerialCommands() {
           jukeboxMode = false;
           programmerModeType = "";
           programmerAutoReady = false;
-          Serial.println(F("\n🔧 === PROGRAMMING MODE ACTIVATED ==="));
+          Serial.println(F("\n=== PROGRAMMING MODE ACTIVATED ==="));
           Serial.println(F("Write 'auto' for Automatic mode, 'manual' for Manual mode, or 'read' to read cards"));
           Serial.println(F("Type 'jukebox' to return to jukebox mode"));
         }
@@ -506,7 +506,7 @@ void performSystemCheck() {
   // Periodic system health check
   if (TimePeriodIsOver(checkTimer, checkInterval)) {
     uint8_t state = myDFPlayer.readState();
-    Serial.print("🔍 System check - DFPlayer state: ");
+    Serial.print("CHECK: System check - DFPlayer state: ");
     Serial.println(state);
     
     if (state == 255) {
@@ -581,7 +581,7 @@ void programmerMode() {
       jukeboxMode = true;
       programmerModeType = "";
       programmerAutoReady = false;
-      Serial.println(F("\n🎵 === JUKEBOX MODE ACTIVATED ==="));
+      Serial.println(F("\n=== JUKEBOX MODE ACTIVATED ==="));
       Serial.println(F("Place an RFID card on the reader to play a song"));
     } else if (programmerModeType != "auto" && programmerModeType != "manual" && programmerModeType != "read") {
       Serial.println("Programming commands: 'auto', 'manual', 'read', or 'jukebox'");
@@ -643,7 +643,7 @@ void autoModus() {
     mfrc522.PCD_StopCrypto1();
 
     programmerCurrentNumber++;
-    Serial.println("✅ Card written successfully! Number: " + String(programmerCurrentNumber - 1) + " (" + getSongInfo(programmerCurrentNumber - 1) + ")");
+    Serial.println("SUCCESS: Card written successfully! Number: " + String(programmerCurrentNumber - 1) + " (" + getSongInfo(programmerCurrentNumber - 1) + ")");
     Serial.println("Next number: " + String(programmerCurrentNumber));
     Serial.println("Put a new card on the reader...");
   }
@@ -723,7 +723,7 @@ void manualModus() {
     return;
   }
 
-  Serial.println("✅ Card written successfully with: " + userInput + " (" + getSongInfo(userInput.toInt()) + ")");
+  Serial.println("SUCCESS: Card written successfully with: " + userInput + " (" + getSongInfo(userInput.toInt()) + ")");
   Serial.println("Put a new card on the reader to write another number");
 
   mfrc522.PICC_HaltA();
@@ -849,7 +849,7 @@ boolean TimePeriodIsOver(unsigned long &startOfPeriod, unsigned long TimePeriod)
 //*****************************************************************************
 
 void setupWiFi() {
-  Serial.print(F("📡 Starting WiFi connection to: "));
+  Serial.print(F("WIFI: Starting WiFi connection to: "));
   Serial.println(ssid);
   
   WiFi.mode(WIFI_STA);
@@ -857,7 +857,7 @@ void setupWiFi() {
   
   wifiStartTime = millis();
   wifiSetupStarted = true;
-  Serial.println(F("📡 WiFi connecting in background..."));
+  Serial.println(F("WIFI: WiFi connecting in background..."));
 }
 
 void handleWiFiConnection() {
@@ -872,13 +872,13 @@ void handleWiFiConnection() {
     wifiSetupComplete = true;
     
     Serial.println();
-    Serial.println(F("✅ WiFi connected!"));
-    Serial.print(F("📍 IP address: "));
+    Serial.println(F("SUCCESS: WiFi connected!"));
+    Serial.print(F("NETWORK: IP address: "));
     Serial.println(WiFi.localIP());
     
     // Now setup the web server
     setupWebServer();
-    Serial.print(F("🕸️  Web Interface: Available at http://"));
+    Serial.print(F("WEB: Web Interface: Available at http://"));
     Serial.print(WiFi.localIP());
     Serial.println(F("/"));
     
@@ -886,8 +886,8 @@ void handleWiFiConnection() {
     // WiFi connection timeout
     wifiSetupComplete = true;
     Serial.println();
-    Serial.println(F("⚠️  WiFi connection timeout - continuing without web interface"));
-    Serial.println(F("🎵 Music playback is fully functional without WiFi"));
+    Serial.println(F("WARNING: WiFi connection timeout - continuing without web interface"));
+    Serial.println(F("STATUS: Music playback is fully functional without WiFi"));
     
   } else if (!wifiConnected && (currentTime - wifiStartTime) % 1000 == 0) {
     // Print a dot every second while connecting (non-blocking)
@@ -905,7 +905,7 @@ void handleWiFiConnection() {
 
 void setupWebServer() {
   if (WiFi.status() != WL_CONNECTED) {
-    Serial.println(F("⚠️  Cannot setup Web Server - WiFi not connected"));
+    Serial.println(F("WARNING: Cannot setup Web Server - WiFi not connected"));
     return;
   }
   
@@ -933,40 +933,40 @@ void setupWebServer() {
 </head>
 <body>
   <div class="container">
-    <h1>🎵 ESP32 RFID Jukebox</h1>
+    <h1>ESP32 RFID Jukebox</h1>
     
     <div class="section">
-      <h3>🎛️ Volume Control</h3>
+      <h3>Volume Control</h3>
       <a href="/cmd?c=v" class="button volume">Check Volume</a>
       <a href="/cmd?c=+" class="button volume">Volume Up</a>
       <a href="/cmd?c=-" class="button volume">Volume Down</a>
     </div>
     
     <div class="section">
-      <h3>🎵 Music Control</h3>
+      <h3>Music Control</h3>
       <a href="/cmd?c=s" class="button control">Player Status</a>
       <a href="/cmd?c=l" class="button control">List Songs</a>
     </div>
     
     <div class="section">
-      <h3>🔧 Programming Mode</h3>
+      <h3>Programming Mode</h3>
       <a href="/cmd?c=p" class="button control">Enter Programming</a>
       <a href="/cmd?c=jukebox" class="button control">Return to Jukebox</a>
     </div>
     
     <div class="section">
-      <h3>🔧 System Control</h3>
+      <h3>System Control</h3>
       <a href="/cmd?c=r" class="button system">Reset ESP32</a>
     </div>
     
     <div class="section">
-      <h3>💬 Custom Command</h3>
+      <h3>Custom Command</h3>
       <input type="text" id="customCmd" class="command-input" placeholder="Enter single character command (s, v, +, -, l, p, r)">
       <button onclick="sendCustomCommand()" class="button">Send Command</button>
     </div>
     
     <div class="section">
-      <h3>📝 Response</h3>
+      <h3>Response</h3>
       <div id="response" class="response">Click a button to see the response...</div>
     </div>
   </div>
@@ -1043,8 +1043,8 @@ void setupWebServer() {
   });
   
   server.begin();
-  Serial.println(F("✅ Web Server Ready"));
-  Serial.print(F("🕸️  Web Interface: http://"));
+  Serial.println(F("SUCCESS: Web Server Ready"));
+  Serial.print(F("WEB: Web Interface: http://"));
   Serial.print(WiFi.localIP());
   Serial.println(F("/"));
 }
@@ -1074,9 +1074,9 @@ String processCommand(char command) {
       if (currentVolume < MAX_VOLUME) {
         currentVolume++;
         myDFPlayer.volume(currentVolume);
-        wifiResponse = "🔊 Volume up: " + String(currentVolume);
+        wifiResponse = "VOLUME: Volume up: " + String(currentVolume);
       } else {
-        wifiResponse = "🔊 Volume already at maximum (" + String(MAX_VOLUME) + ")";
+        wifiResponse = "VOLUME: Volume already at maximum (" + String(MAX_VOLUME) + ")";
       }
       break;
       
@@ -1084,14 +1084,14 @@ String processCommand(char command) {
       if (currentVolume > MIN_VOLUME) {
         currentVolume--;
         myDFPlayer.volume(currentVolume);
-        wifiResponse = "🔉 Volume down: " + String(currentVolume);
+        wifiResponse = "VOLUME: Volume down: " + String(currentVolume);
       } else {
-        wifiResponse = "🔇 Volume already at minimum (" + String(MIN_VOLUME) + ")";
+        wifiResponse = "VOLUME: Volume already at minimum (" + String(MIN_VOLUME) + ")";
       }
       break;
       
     case 'l':
-      wifiResponse = "🎵 === Song List === 🎵\n";
+      wifiResponse = "=== Song List ===\n";
       for (int i = 1; i <= 31; i++) {
         wifiResponse += "Track ";
         if (i < 10) wifiResponse += "0";
@@ -1105,7 +1105,7 @@ String processCommand(char command) {
         jukeboxMode = false;
         programmerModeType = "";
         programmerAutoReady = false;
-        wifiResponse = "🔧 === PROGRAMMING MODE ACTIVATED ===\n";
+        wifiResponse = "PROGRAM: === PROGRAMMING MODE ACTIVATED ===\n";
         wifiResponse += "Note: Programming mode works best with Serial Monitor.\n";
         wifiResponse += "Use Serial Monitor for: 'auto', 'manual', 'read', or 'jukebox'";
       } else {
