@@ -39,6 +39,12 @@
    
    Volume Control         ESP32        Description
    Software Control       N/A          Volume control via serial/web commands (0-30, default 25)
+   
+   Network Configuration  IP Address   Description
+   Static IP              192.168.1.251 Fixed IP address for web interface
+   Gateway               192.168.1.1   Default router gateway
+   Subnet                255.255.255.0 Network subnet mask
+   Web Interface         http://192.168.1.251/ Browser access URL
    -----------------------------------------------------------------------------------------
 */
 
@@ -207,7 +213,7 @@ void setup() {
   Serial.println(F("VOLUME: Software control via serial/web commands (0-30, default 25)"));
   Serial.println(F("\nPROGRAMMING: Type 'program' to enter card programming mode"));
   Serial.println(F("COMMANDS: l=song list, v=volume, +=vol up, -=vol down, s=status"));
-  Serial.println(F("WEB: Web Interface will be available once WiFi connects..."));
+  Serial.println(F("WEB: Web Interface will be available at http://192.168.1.251/ once WiFi connects"));
 }
 
 //*****************************************************************************
@@ -852,6 +858,22 @@ boolean TimePeriodIsOver(unsigned long &startOfPeriod, unsigned long TimePeriod)
 void setupWiFi() {
   Serial.print(F("WIFI: Starting WiFi connection to: "));
   Serial.println(ssid);
+  
+  // Configure static IP
+  IPAddress local_IP(192, 168, 1, 251);
+  IPAddress gateway(192, 168, 1, 1);
+  IPAddress subnet(255, 255, 255, 0);
+  IPAddress primaryDNS(8, 8, 8, 8);     // Optional: Google DNS
+  IPAddress secondaryDNS(8, 8, 4, 4);   // Optional: Google DNS
+  
+  Serial.println(F("WIFI: Configuring static IP: 192.168.1.251"));
+  
+  // Configure WiFi with static IP
+  if (!WiFi.config(local_IP, gateway, subnet, primaryDNS, secondaryDNS)) {
+    Serial.println(F("WARNING: Static IP configuration failed"));
+  } else {
+    Serial.println(F("WIFI: Static IP configuration successful"));
+  }
   
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
