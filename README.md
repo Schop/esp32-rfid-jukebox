@@ -18,7 +18,7 @@ A powerful, feature-rich RFID-controlled music player built with ESP32, featurin
 ## 🔧 Hardware Requirements
 
 ### Core Components
-- **ESP32 Dev Module** (38-pin version recommended)
+- **ESP32 Dev Module** (30-pin version recommended)
 - **RC522 RFID Reader** with cards/tags
 - **DFPlayer Mini MP3 Module** with microSD card
 - **Speaker** (8Ω, 3W recommended)
