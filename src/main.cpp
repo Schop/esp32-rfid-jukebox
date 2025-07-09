@@ -90,6 +90,14 @@ AsyncWebServer server(80);              // Web server on port 80
 // WiFi command response buffer
 String wifiResponse = "";               // Buffer for web interface responses
 
+// Auto-progression function
+void checkAutoProgression();
+
+// Custom shuffle functions
+void createShufflePlaylist();
+void playNextShuffleTrack();
+void startCustomShuffle();
+
 // Function prototypes
 void handleButtons();
 void handleRFID();
@@ -153,10 +161,25 @@ bool previousPrevButtonState = HIGH;
 bool previousPlayPauseButtonState = HIGH;
 bool previousShuffleButtonState = HIGH;
 
+// Custom shuffle variables
+bool customShuffleMode = false;        // Track if custom shuffle is active
+int shufflePlaylist[41];               // Array to hold shuffled track numbers
+int shuffleIndex = 0;                  // Current position in shuffle playlist
+int shuffleSize = 41;                  // Number of tracks in shuffle
+
+// Auto-progression tracking for shuffle mode
+unsigned long lastStateCheck = 0;      // Timer for checking DFPlayer state
+unsigned long stateCheckInterval = 500; // Check state every second
+uint8_t previousDFPlayerState = 0;     // Track previous state to handle delayed state updates
+bool waitingForStateUpdate = false;    // Flag to handle the delayed state issue
+
 //*****************************************************************************
 void setup() {
   Serial.begin(115200);                     // ESP32 standard serial speed
   delay(1000);                              // Give serial time to start
+  
+  // Initialize random seed for shuffle function
+  randomSeed(analogRead(0) + millis());     // Use analog noise + time for better randomness
   
   Serial.println(F("\n=== ESP32 RFID Jukebox Starting ==="));
   Serial.println(F("Step 1: Serial initialized"));
@@ -236,6 +259,7 @@ void loop() {
     handleButtons();
     handleRFID();
     handleSerialCommands();
+    checkAutoProgression();  // Check for automatic song progression
     // performSystemCheck();
   } else {
     // Programming mode - RFID card programming
@@ -268,17 +292,19 @@ void handleButtons() {
 
   // Check for falling edge on shuffle button
   if (currentShuffleButtonState == LOW && previousShuffleButtonState == HIGH) {
-    myDFPlayer.randomAll();
-    Serial.println("SHUFFLE: Shuffle Play");
-    isPlaying = true;
+    startCustomShuffle();
     delay(50); // Debounce delay
   }
 
   // Check for falling edge on next button
   if (currentNextButtonState == LOW && previousNextButtonState == HIGH) {
-    myDFPlayer.next();
-    currentSong = currentSong + 1;
-    Serial.println("NEXT: Next track");
+    if (customShuffleMode) {
+      playNextShuffleTrack();
+    } else {
+      myDFPlayer.next();
+      currentSong = currentSong + 1;
+      Serial.println("NEXT: Next track");
+    }
     delay(50); // Debounce delay
   }
 
@@ -378,7 +404,7 @@ void handleRFID() {
     // Handle playlist cards (negative numbers) and regular song cards
     playCardNumber(number.toInt());
 
-    Serial.println(F("**End Reading**\n"));
+    Serial.println("**End Reading**");
     delay(250); // Delay to prevent rapid re-reading
     mfrc522.PICC_HaltA();
     mfrc522.PCD_StopCrypto1();
@@ -392,10 +418,8 @@ void playCardNumber(int number) {
     int folderNumber = abs(number);
     
     if (number == -7) {
-      // Shuffle card - start random play mode
-      myDFPlayer.randomAll();
-      Serial.println("SHUFFLE: Shuffle mode activated - Playing random tracks");
-      isPlaying = true;
+      // Shuffle card - start custom shuffle mode
+      startCustomShuffle();
     } else {
       // Play from specific folder
       myDFPlayer.playLargeFolder(folderNumber, 1);
@@ -409,6 +433,13 @@ void playCardNumber(int number) {
   }
   else if (number > 0) {
     // Regular song card - play specific track number
+    // Exit shuffle mode when playing a specific song
+    if (customShuffleMode) {
+      customShuffleMode = false;
+      waitingForStateUpdate = false;  // Reset auto-progression tracking
+      Serial.println("SHUFFLE: Exiting shuffle mode - Playing specific track");
+    }
+    
     myDFPlayer.stop();
     delay(100);
     myDFPlayer.play(number);
@@ -438,7 +469,15 @@ void handleSerialCommands() {
         {
           uint8_t state = myDFPlayer.readState();
           Serial.print("DFPlayer state: ");
-          Serial.println(state);
+          Serial.print(state);
+          if (customShuffleMode) {
+            Serial.print(" (Shuffle: ON, Auto-check: ");
+            Serial.print(waitingForStateUpdate ? "WAITING" : "READY");
+            Serial.print(", Previous: ");
+            Serial.print(previousDFPlayerState);
+            Serial.print(")");
+          }
+          Serial.println();
         }
         break;
         
@@ -500,16 +539,18 @@ void handleSerialCommands() {
         myDFPlayer.stop();
         isPlaying = false;
         currentSong = 0;
+        // Exit shuffle mode when manually stopping
+        if (customShuffleMode) {
+          customShuffleMode = false;
+          waitingForStateUpdate = false;
+          Serial.println("STOP: Exiting shuffle mode");
+        }
         Serial.println("STOP: Current song stopped");
         break;
         
       case 'h':
         // Shuffle mode
-        myDFPlayer.stop();
-        delay(100);
-        myDFPlayer.randomAll();
-        isPlaying = true;
-        Serial.println("SHUFFLE: Shuffle mode activated - Playing random tracks");
+        startCustomShuffle();
         break;
         
       case 't':
@@ -527,9 +568,13 @@ void handleSerialCommands() {
         
       case 'n':
         // Next track
-        myDFPlayer.next();
-        if (currentSong > 0) currentSong++;
-        Serial.println("NEXT: Next track");
+        if (customShuffleMode) {
+          playNextShuffleTrack();
+        } else {
+          myDFPlayer.next();
+          if (currentSong > 0) currentSong++;
+          Serial.println("NEXT: Next track");
+        }
         break;
         
       case 'b':
@@ -537,6 +582,23 @@ void handleSerialCommands() {
         myDFPlayer.previous();
         if (currentSong > 1) currentSong--;
         Serial.println("PREVIOUS: Previous track");
+        break;
+        
+      case 'z':
+        // Shuffle status
+        if (customShuffleMode) {
+          Serial.print("SHUFFLE: Active - Track ");
+          Serial.print(shuffleIndex);
+          Serial.print(" of ");
+          Serial.print(shuffleSize);
+          Serial.print(" (Current: #");
+          Serial.print(currentSong);
+          Serial.print(" - ");
+          Serial.print(getSongInfo(currentSong));
+          Serial.println(")");
+        } else {
+          Serial.println("SHUFFLE: Inactive - Normal playback mode");
+        }
         break;
         
       case 'p':
@@ -553,7 +615,7 @@ void handleSerialCommands() {
         
       default:
         if (jukeboxMode) {
-          Serial.println("Commands: s=state, r=reset, v=volume, +=vol up, -=vol down, l=list songs, p=program mode, x=stop, h=shuffle, t=play/pause, n=next, b=previous");
+          Serial.println("Commands: s=state, r=reset, v=volume, +=vol up, -=vol down, l=list songs, p=program mode, x=stop, h=shuffle, z=shuffle status, t=play/pause, n=next, b=previous");
         }
         break;
     }
@@ -1030,6 +1092,12 @@ void setupWebServer() {
       String songParam = request->getParam("song")->value();
       int songNumber = songParam.toInt();
       if (songNumber >= 1 && songNumber <= 41) {
+        // Exit shuffle mode when playing a specific song
+        if (customShuffleMode) {
+          customShuffleMode = false;
+          waitingForStateUpdate = false;  // Reset auto-progression tracking
+        }
+        
         // Stop current song and play new one
         myDFPlayer.stop();
         delay(100);
@@ -1088,6 +1156,11 @@ String processCommand(char command) {
       {
         uint8_t state = myDFPlayer.readState();
         wifiResponse = "DFPlayer state: " + String(state);
+        if (customShuffleMode) {
+          wifiResponse += " (Shuffle: ON, Auto-check: ";
+          wifiResponse += waitingForStateUpdate ? "WAITING" : "READY";
+          wifiResponse += ", Previous: " + String(previousDFPlayerState) + ")";
+        }
       }
       break;
       
@@ -1112,16 +1185,20 @@ String processCommand(char command) {
       myDFPlayer.stop();
       isPlaying = false;
       currentSong = 0;
-      wifiResponse = "STOP: Current song stopped";
+      // Exit shuffle mode when manually stopping
+      if (customShuffleMode) {
+        customShuffleMode = false;
+        waitingForStateUpdate = false;
+        wifiResponse = "STOP: Exiting shuffle mode - Current song stopped";
+      } else {
+        wifiResponse = "STOP: Current song stopped";
+      }
       break;
       
     case 'h':
       // Shuffle mode
-      myDFPlayer.stop();
-      delay(100);
-      myDFPlayer.randomAll();
-      isPlaying = true;
-      wifiResponse = "SHUFFLE: Shuffle mode activated - Playing random tracks";
+      startCustomShuffle();
+      wifiResponse = "SHUFFLE: Custom shuffle mode activated - True random playback";
       break;
       
     case 't':
@@ -1139,9 +1216,14 @@ String processCommand(char command) {
       
     case 'n':
       // Next track
-      myDFPlayer.next();
-      if (currentSong > 0) currentSong++;
-      wifiResponse = "NEXT: Next track";
+      if (customShuffleMode) {
+        playNextShuffleTrack();
+        wifiResponse = "NEXT: Next shuffle track";
+      } else {
+        myDFPlayer.next();
+        if (currentSong > 0) currentSong++;
+        wifiResponse = "NEXT: Next track";
+      }
       break;
       
     case 'b':
@@ -1149,6 +1231,16 @@ String processCommand(char command) {
       myDFPlayer.previous();
       if (currentSong > 1) currentSong--;
       wifiResponse = "PREVIOUS: Previous track";
+      break;
+      
+    case 'z':
+      // Shuffle status
+      if (customShuffleMode) {
+        wifiResponse = "SHUFFLE: Active - Track " + String(shuffleIndex) + " of " + String(shuffleSize);
+        wifiResponse += " (Current: #" + String(currentSong) + " - " + getSongInfo(currentSong) + ")";
+      } else {
+        wifiResponse = "SHUFFLE: Inactive - Normal playback mode";
+      }
       break;
       
     case 'p':
@@ -1166,7 +1258,7 @@ String processCommand(char command) {
       
     default:
       wifiResponse = "Unknown command: " + String(command) + "\n";
-      wifiResponse += "Available commands: s=state, r=reset, l=list songs, p=program mode, x=stop, h=shuffle, t=play/pause, n=next, b=previous";
+      wifiResponse += "Available commands: s=state, r=reset, l=list songs, p=program mode, x=stop, h=shuffle, z=shuffle status, t=play/pause, n=next, b=previous";
       break;
   }
   
@@ -1181,5 +1273,105 @@ String processJukeboxCommand() {
     return "JUKEBOX: === JUKEBOX MODE ACTIVATED ===\nPlace an RFID card on the reader to play a song";
   } else {
     return "Already in jukebox mode";
+  }
+}
+
+//*****************************************************************************
+// Custom Shuffle Functions
+//*****************************************************************************
+
+void createShufflePlaylist() {
+  // Fill playlist with track numbers 1-41
+  for (int i = 0; i < shuffleSize; i++) {
+    shufflePlaylist[i] = i + 1;
+  }
+  
+  // Shuffle using Fisher-Yates algorithm for true randomness
+  for (int i = shuffleSize - 1; i > 0; i--) {
+    int j = random(0, i + 1);  // Random index from 0 to i
+    // Swap elements
+    int temp = shufflePlaylist[i];
+    shufflePlaylist[i] = shufflePlaylist[j];
+    shufflePlaylist[j] = temp;
+  }
+  
+  shuffleIndex = 0;  // Reset to beginning of shuffled playlist
+  Serial.println("SHUFFLE: Created new shuffled playlist");
+}
+
+void startCustomShuffle() {
+  customShuffleMode = true;
+  createShufflePlaylist();
+  playNextShuffleTrack();
+  
+  // Initialize auto-progression tracking
+  lastStateCheck = millis();
+  previousDFPlayerState = 1;  // Assume playing state
+  waitingForStateUpdate = false;
+  
+  Serial.println("SHUFFLE: Custom shuffle mode activated - True random playback");
+}
+
+void playNextShuffleTrack() {
+  if (!customShuffleMode) return;
+  
+  // If we've played all tracks, create a new shuffle
+  if (shuffleIndex >= shuffleSize) {
+    Serial.println("SHUFFLE: Completed all tracks, creating new shuffle order");
+    createShufflePlaylist();
+  }
+  
+  int trackToPlay = shufflePlaylist[shuffleIndex];
+  myDFPlayer.stop();
+  delay(100);
+  myDFPlayer.play(trackToPlay);
+  currentSong = trackToPlay;
+  isPlaying = true;
+  
+  Serial.print("SHUFFLE: Playing track #");
+  Serial.print(trackToPlay);
+  Serial.print(" (");
+  Serial.print(shuffleIndex + 1);
+  Serial.print("/");
+  Serial.print(shuffleSize);
+  Serial.print(") - ");
+  Serial.println(getSongInfo(trackToPlay));
+  
+  shuffleIndex++;
+}
+
+//*****************************************************************************
+// Auto-progression Function
+//*****************************************************************************
+
+void checkAutoProgression() {
+  // Only check if we're in shuffle mode and playing
+  if (!customShuffleMode || !isPlaying) return;
+  
+  // Check state periodically
+  if (millis() - lastStateCheck >= stateCheckInterval) {
+    lastStateCheck = millis();
+    
+    uint8_t currentState = myDFPlayer.readState();
+    
+    // Handle the delayed state update issue
+    if (waitingForStateUpdate) {
+      // Second check - this should give us the correct state
+      if (currentState == 0) {  // Song finished
+        Serial.println("SHUFFLE: Song finished, playing next track");
+        playNextShuffleTrack();
+        waitingForStateUpdate = false;
+      } else {
+        // Still playing, reset flag
+        waitingForStateUpdate = false;
+      }
+    } else {
+      // First check - if state changed from playing to stopped, set flag for next check
+      if (previousDFPlayerState != 0 && currentState == 0) {
+        waitingForStateUpdate = true;
+      }
+    }
+    
+    previousDFPlayerState = currentState;
   }
 }
